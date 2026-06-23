@@ -540,43 +540,184 @@ const CONVERSION_TABLE = [
 ];
 
 const DEFAULT_CAMPAIGNS = [
-  { id:1,  name:'クロロ調査隊チームＳ',                   display:'クロロ調査隊チームＳ⚡',                          genre:'slot' },
-  { id:2,  name:'クロロ調査隊チームＰ',                   display:'クロロ調査隊チームＰ⚡',                          genre:'pachinko' },
-  { id:3,  name:'クロロ調査隊チームＬＴ',                  display:'クロロ調査隊チームＬＴ🔫',                        genre:'pachinko' },
-  { id:4,  name:'クロロ調査隊チーム光',                   display:'クロロ調査隊チーム光✨',                          genre:'slot' },
-  { id:5,  name:'クロロ調査隊マキシマムＳ',                display:'クロロ調査隊マキシマムＳ🔥',                      genre:'slot' },
-  { id:6,  name:'クロロ調査隊プレミアムＰ',               display:'クロロ調査隊プレミアムＰ👑',                      genre:'pachinko' },
-  { id:7,  name:'クロロ調査隊SUPERトリプルＳ',            display:'クロロ調査隊SUPERトリプルＳ✨',                   genre:'slot' },
-  { id:8,  name:'クロロ調査隊SUPERトリプルＰ',            display:'クロロ調査隊SUPERトリプルＰ✨',                   genre:'pachinko' },
-  { id:9,  name:'クロロ調査隊オールスターＳ',              display:'クロロ調査隊オールスターＳ⚡️',                    genre:'slot' },
-  { id:10, name:'クロロ調査隊アニバーサリーＳ',            display:'クロロ調査隊アニバーサリーＳ👑',                  genre:'slot' },
-  { id:11, name:'クロロ調査隊サプライズＳ',               display:'クロロ調査隊サプライズＳ👑',                      genre:'slot' },
-  { id:12, name:'クロロ調査隊チームＳＰ',                 display:'クロロ調査隊チームS/P⚡',                         genre:'both' },
-  { id:13, name:'クロロ調査隊チームオヌヌメＳ',           display:'クロロ調査隊チームオヌヌメＳ⚡',                  genre:'slot' },
-  { id:14, name:'クロロえげつない調査隊SUPERトリプルＳ',  display:'クロロえげつない調査隊 SUPERトリプルＳ👑',        genre:'slot' },
-  { id:15, name:'クロロえげつない調査隊アニバーサリーＳ', display:'クロロえげつない調査隊 アニバーサリーＳ👑',       genre:'slot' },
-  { id:16, name:'クロロえげつない調査隊ミニバーサリーＳ', display:'クロロえげつない調査隊 ミニバーサリーＳ👑',       genre:'slot' },
-  { id:17, name:'クロロえげつない調査隊オールスターＳ',   display:'クロロえげつない調査隊 オールスターＳ⚡️',        genre:'slot' },
-  { id:18, name:'クロロえげつない調査隊プレミアムＰ',     display:'クロロえげつない調査隊 プレミアムＰ👑',           genre:'pachinko' },
-  { id:19, name:'クロロレンジャーＳ',                     display:'クロロレンジャーＳ⚡',                            genre:'slot' },
-  { id:20, name:'クロロレンジャーＰ',                     display:'クロロレンジャーＰ⚡',                            genre:'pachinko' },
-  { id:21, name:'クロロレンジャーＰＰ',                   display:'クロロレンジャーＰＰ👑',                          genre:'pachinko' },
-  { id:22, name:'クロロレンジャーＳＳ',                   display:'クロロレンジャーＳＳ👑',                          genre:'slot' },
-  { id:23, name:'クロロレンジャーＭ',                     display:'クロロレンジャーＭ🔥',                            genre:'slot' },
-  { id:24, name:'クロロレンジャーＳＰ',                   display:'クロロレンジャーＳＰ⚡',                          genre:'both' },
-  { id:25, name:'クロロえげつないレンジャーオールスターＳ',display:'クロロえげつないレンジャー オールスターＳ⚡️',  genre:'slot' },
-  { id:26, name:'クロロえげつないレンジャーSUPERトリプルＳ',display:'クロロえげつないレンジャー SUPERトリプルＳ👑',genre:'slot' },
-  { id:27, name:'クロロえげつないレンジャーアニバーサリーＳ',display:'クロロえげつないレンジャー アニバーサリーＳ👑',genre:'slot'},
-  { id:28, name:'クロロマスクＳ',                         display:'クロロマスクＳ⚡',                                genre:'slot' },
-  { id:29, name:'クロロマスクＰＰ',                       display:'クロロマスクＰＰ👑',                              genre:'pachinko' },
-  { id:30, name:'クロロマスクＳＰ',                       display:'クロロマスクＳＰ⚡',                              genre:'both' },
-  { id:31, name:'クロロえげつない愛知決戦Ｓ【華】',       display:'クロロえげつない愛知決戦Ｓ【華】👑',              genre:'slot' },
-  { id:32, name:'クロロえげつない岐阜決戦Ｓ【華】',       display:'クロロえげつない岐阜決戦Ｓ【華】👑',              genre:'slot' },
-  { id:33, name:'クロロえげつない三重決戦Ｓ【華】',       display:'クロロえげつない三重決戦Ｓ【華】👑',              genre:'slot' },
-  { id:34, name:'スロッター✕スロッターALL STAR',          display:'スロッター✕スロッターALL STAR⚡️',                genre:'slot' },
-  { id:35, name:'スロッター特別分析レポート',              display:'スロッター特別分析レポート⚡',                    genre:'slot' },
-  { id:36, name:'超トレジャースロッター',                  display:'超トレジャースロッター⚡',                        genre:'slot' },
-  { id:37, name:'『超』クロロえげつないレンジャーSUPERトリプルＳ', display:'『超』クロロえげつないレンジャー SUPERトリプルＳ👑', genre:'slot' },
+  { id:  1, name:`クロロ調査隊チーム光`, display:`クロロ調査隊チーム光✨`, genre:"slot" },
+  { id:  2, name:`クロロ調査隊チームＬＴ`, display:`クロロ調査隊チームＬＴ🔫`, genre:"slot" },
+  { id:  3, name:`クロロ調査隊チームＳ`, display:`クロロ調査隊チームＳ⚡`, genre:"slot" },
+  { id:  4, name:`クロロ調査隊チームＰ`, display:`クロロ調査隊チームＰ⚡`, genre:"pachinko" },
+  { id:  5, name:`クロロ調査隊チーム6.5`, display:`クロロ調査隊チーム6.5⚡`, genre:"slot" },
+  { id:  6, name:`クロロ調査隊チーム30`, display:`クロロ調査隊チーム30⚡`, genre:"slot" },
+  { id:  7, name:`クロロ調査隊チームSMART`, display:`クロロ調査隊チームSMART⚡`, genre:"slot" },
+  { id:  8, name:`クロロ調査隊チーム北`, display:`クロロ調査隊チーム北⚡`, genre:"slot" },
+  { id:  9, name:`クロロ調査隊チームＳＰ`, display:`クロロ調査隊チームS/P⚡`, genre:"both" },
+  { id: 10, name:`クロロ調査隊マキシマムＳ`, display:`クロロ調査隊マキシマムＳ🔥`, genre:"slot" },
+  { id: 11, name:`クロロ調査隊プレミアムＰ`, display:`クロロ調査隊プレミアムＰ👑`, genre:"pachinko" },
+  { id: 12, name:`クロロ調査隊サプライズＳ`, display:`クロロ調査隊サプライズＳ👑`, genre:"slot" },
+  { id: 13, name:`クロロ調査隊アニバーサリーＳ`, display:`クロロ調査隊アニバーサリーＳ👑`, genre:"slot" },
+  { id: 14, name:`クロロレンジャー光`, display:`クロロレンジャー光✨`, genre:"slot" },
+  { id: 15, name:`クロロレンジャーＬＴ`, display:`クロロレンジャーＬＴ🔫`, genre:"slot" },
+  { id: 16, name:`クロロレンジャーＳ`, display:`クロロレンジャーＳ⚡`, genre:"slot" },
+  { id: 17, name:`クロロレンジャーＰ`, display:`クロロレンジャーＰ⚡`, genre:"pachinko" },
+  { id: 18, name:`クロロレンジャー6.5`, display:`クロロレンジャー6.5⚡`, genre:"slot" },
+  { id: 19, name:`クロロレンジャー30`, display:`クロロレンジャー30⚡`, genre:"slot" },
+  { id: 20, name:`クロロレンジャーSMART`, display:`クロロレンジャーSMART⚡`, genre:"slot" },
+  { id: 21, name:`クロロレンジャー北`, display:`クロロレンジャー北⚡`, genre:"slot" },
+  { id: 22, name:`クロロレンジャーＳＰ`, display:`クロロレンジャーＳＰ⚡`, genre:"both" },
+  { id: 23, name:`クロロレンジャーＭ`, display:`クロロレンジャーＭ🔥`, genre:"slot" },
+  { id: 24, name:`クロロレンジャーＰＰ`, display:`クロロレンジャーＰＰ👑`, genre:"pachinko" },
+  { id: 25, name:`クロロレンジャーＳＳ`, display:`クロロレンジャーＳＳ👑`, genre:"slot" },
+  { id: 26, name:`クロロえげつない調査隊プレミアムＰ`, display:`クロロえげつない調査隊
+プレミアムＰ👑`, genre:"pachinko" },
+  { id: 27, name:`クロロマスクH`, display:`クロロマスクＨ✨`, genre:"slot" },
+  { id: 28, name:`クロロマスクSP`, display:`クロロマスクＳＰ⚡`, genre:"both" },
+  { id: 29, name:`クロロマスクS`, display:`クロロマスクＳ⚡`, genre:"slot" },
+  { id: 30, name:`クロロマスクAD`, display:`クロロマスクＡＤ🔥`, genre:"slot" },
+  { id: 31, name:`クロロマスクM`, display:`クロロマスクM🔥`, genre:"slot" },
+  { id: 32, name:`クロロマスクPP`, display:`クロロマスクＰＰ👑`, genre:"pachinko" },
+  { id: 33, name:`クロロマスクSS`, display:`クロロマスクＳＳ👑`, genre:"slot" },
+  { id: 34, name:`クロロ調査隊チームJG`, display:`クロロ調査隊チームＪＧ⚡️`, genre:"slot" },
+  { id: 35, name:`パチンコ店長クロロ来店!?`, display:`クロロ店長来店！？`, genre:"pachinko" },
+  { id: 36, name:`クロロSPチーム`, display:`クロロSPECIALチーム👑`, genre:"slot" },
+  { id: 37, name:`クロロレンジャーS/P`, display:`クロロレンジャーＳＰ⚡`, genre:"both" },
+  { id: 38, name:`クロロ調査隊チームS/P`, display:`クロロ調査隊チームS/P⚡`, genre:"slot" },
+  { id: 39, name:`クロロ調査隊チーム真Ｓ`, display:`クロロ調査隊チーム真Ｓ⚔️`, genre:"slot" },
+  { id: 40, name:`クロロ調査隊チーム真Ｐ`, display:`クロロ調査隊チーム真Ｐ⚔️`, genre:"pachinko" },
+  { id: 41, name:`クロロ調査隊チーム絆`, display:`クロロ調査隊チーム絆⚡`, genre:"slot" },
+  { id: 42, name:`クロロ調査隊チームアニマルＳ`, display:`クロロ調査隊チームアニマルＳ🔥`, genre:"slot" },
+  { id: 43, name:`クロロ調査隊チームVARIETY`, display:`クロロ調査隊チームVARIETY⚡`, genre:"slot" },
+  { id: 44, name:`クロロ調査隊チームＡ`, display:`クロロ調査隊チームＡ⚡`, genre:"slot" },
+  { id: 45, name:`クロロ調査隊チーム革命の一劇`, display:`クロロ調査隊チーム革命の一劇⚡`, genre:"slot" },
+  { id: 46, name:`クロロレンジャーＨＲ`, display:`クロロレンジャーHR⚾️`, genre:"slot" },
+  { id: 47, name:`クロロえげつないレンジャーアニバーサリーＳ`, display:`クロロえげつないレンジャー
+アニバーサリーＳ👑`, genre:"slot" },
+  { id: 48, name:`クロロS/P調査隊チームZZ`, display:`クロロS/P調査隊チームＺＺ⚡️`, genre:"slot" },
+  { id: 49, name:`クロロレンジャーＪＧ`, display:`クロロレンジャーＪＧ⚡️`, genre:"slot" },
+  { id: 50, name:`クロロレンジャーＫＫ`, display:`クロロレンジャーＫＫ⚡️`, genre:"slot" },
+  { id: 51, name:`クロロS/P調査隊チームLet's`, display:`クロロS/P調査隊チームLet's⚡️`, genre:"slot" },
+  { id: 52, name:`クロロ調査隊チーム漢`, display:`クロロ調査隊チーム漢⚡️`, genre:"slot" },
+  { id: 53, name:`クロロレンジャー革命の一劇`, display:`クロロレンジャー革命の一劇⚡️`, genre:"slot" },
+  { id: 54, name:`クロロえげつない調査隊SUPERトリプルＳ`, display:`クロロえげつない調査隊
+SUPERトリプルＳ👑`, genre:"slot" },
+  { id: 55, name:`クロロえげつない調査隊アニバーサリーＳ`, display:`クロロえげつない調査隊
+アニバーサリーＳ👑`, genre:"slot" },
+  { id: 56, name:`クロロレンジャーＬＭ`, display:`クロロレンジャーLM🗼`, genre:"slot" },
+  { id: 57, name:`クロロレンジャーVARIETY`, display:`クロロレンジャーVARIETY⚡️`, genre:"slot" },
+  { id: 58, name:`クロロえげつないレンジャーSUPERトリプルＳ`, display:`クロロえげつないレンジャー
+SUPERトリプルＳ👑`, genre:"slot" },
+  { id: 59, name:`クロロ調査隊SUPERトリプルS`, display:`クロロ調査隊SUPERトリプルS✨`, genre:"slot" },
+  { id: 60, name:`クロロ調査隊チームエイリやん`, display:`クロロ調査隊チームエイリやん⚡️`, genre:"slot" },
+  { id: 61, name:`超クロロえげつない調査隊SUPERトリプルＳ`, display:`超クロロえげつない調査隊
+SUPERトリプルＳ👑`, genre:"slot" },
+  { id: 62, name:`クロロSPECIALチーム`, display:`クロロSPECIALチーム👑`, genre:"slot" },
+  { id: 63, name:`クロロ調査隊オールスターＳ`, display:`クロロ調査隊オールスターＳ⚡️`, genre:"slot" },
+  { id: 64, name:`クロロ調査隊チームSAN強`, display:`クロロ調査隊チームSAN強⚡️`, genre:"slot" },
+  { id: 65, name:`超クロロえげつないレンジャーSUPERトリプルＳ`, display:`超クロロえげつないレンジャー
+SUPERトリプルＳ👑`, genre:"slot" },
+  { id: 66, name:`クロロマスク30`, display:`クロロマスク30⚡️`, genre:"slot" },
+  { id: 67, name:`クロロえげつないレンジャーオールスターＳ`, display:`クロロえげつないレンジャー
+オールスターＳ⚡️`, genre:"slot" },
+  { id: 68, name:`クロロ調査隊アニマルＳ`, display:`クロロ調査隊アニマルＳ⚡️`, genre:"slot" },
+  { id: 69, name:`クロロえげつない調査隊オールスターＳ`, display:`クロロえげつない調査隊
+オールスターＳ⚡️`, genre:"slot" },
+  { id: 70, name:`クロロレンジャーSAN強`, display:`クロロレンジャーSAN強⚡️`, genre:"slot" },
+  { id: 71, name:`『超』クロロえげつない調査隊SUPERトリプルＳ`, display:`『超』クロロえげつない調査隊
+SUPERトリプルＳ👑`, genre:"slot" },
+  { id: 72, name:`クロロ調査隊チームGODターン`, display:`クロロ調査隊チームGODターン⚡️`, genre:"slot" },
+  { id: 73, name:`クロロえげつない愛知決戦Ｓ【華】`, display:`クロロえげつない愛知決戦Ｓ【華】👑`, genre:"slot" },
+  { id: 74, name:`クロロえげつない岐阜決戦Ｓ【華】`, display:`クロロえげつない岐阜決戦Ｓ【華】👑`, genre:"slot" },
+  { id: 75, name:`クロロ調査隊チーム東海喰種Ｓ`, display:`クロロ調査隊チーム東海喰種Ｓ⚡️`, genre:"slot" },
+  { id: 76, name:`クロロ調査隊オールスターＳ`, display:`クロロ調査隊オールスターＳ⚡️`, genre:"slot" },
+  { id: 77, name:`『超』クロロえげつないレンジャーSUPERトリプルＳ`, display:`『超』クロロえげつないレンジャー
+SUPERトリプルＳ👑`, genre:"slot" },
+  { id: 78, name:`クロロえげつない三重決戦Ｓ【華】`, display:`クロロえげつない三重決戦Ｓ【華】👑`, genre:"slot" },
+  { id: 79, name:`クロロ調査隊チーム東海喰種S/P`, display:`クロロ調査隊チーム東海喰種S/P⚡️`, genre:"slot" },
+  { id: 80, name:`クロロ調査隊プレミアムセレクションＳ`, display:`クロロ調査隊プレミアムセレクションＳ👑`, genre:"slot" },
+  { id: 81, name:`グランド✕スロパチンカー`, display:`グランド✕スロパチンカー⚡️`, genre:"both" },
+  { id: 82, name:`スロッター✕ワールド`, display:`スロッター✕ワールド⚡️`, genre:"slot" },
+  { id: 83, name:`マキシマム✕ワールド`, display:`マキシマム✕ワールド🔥`, genre:"slot" },
+  { id: 84, name:`スロッター✕ワールドＪＧ`, display:`スロッター✕ワールドＪＧ⚡️`, genre:"slot" },
+  { id: 85, name:`スロッター✕ワールドALL STAR`, display:`スロッター✕ワールドALL STAR⚡️`, genre:"slot" },
+  { id: 86, name:`クロロ調査隊SUPERトリプルＰ`, display:`クロロ調査隊SUPERトリプルＰ✨`, genre:"both" },
+  { id: 87, name:`クロロ調査隊チーム関東喰種S/P`, display:`クロロ調査隊チーム関東喰種S/P⚡️`, genre:"slot" },
+  { id: 88, name:`クロロえげつない愛知決戦Ｐ【EV】`, display:`クロロえげつない愛知決戦Ｐ
+【EV】👑`, genre:"pachinko" },
+  { id: 89, name:`スロパチンカー✕ワールド`, display:`スロパチンカー✕ワールド⚡️`, genre:"both" },
+  { id: 90, name:`スロッター✕スロッターALL STAR`, display:`スロッター✕スロッターALL STAR⚡️`, genre:"slot" },
+  { id: 91, name:`スロッター✕ワールドエイリやん`, display:`スロッター✕ワールドエイリやん⚡️`, genre:"slot" },
+  { id: 92, name:`マキシマム✕ワールド`, display:`マキシマム✕ワールド🔥`, genre:"slot" },
+  { id: 93, name:`スロッター✕ワールド`, display:`スロッター✕ワールド⚡️`, genre:"slot" },
+  { id: 94, name:`パチンカー✕ワールド`, display:`パチンカー✕ワールド⚡️`, genre:"pachinko" },
+  { id: 95, name:`裏クロロマスク`, display:`裏クロロマスク⚡`, genre:"slot" },
+  { id: 96, name:`SUPERトリプル✕スロッター`, display:`SUPERトリプル✕スロッター✨`, genre:"slot" },
+  { id: 97, name:`マキシマム✕スロッター`, display:`マキシマム✕スロッター🔥`, genre:"slot" },
+  { id: 98, name:`サプライズ✕ワールド`, display:`サプライズ✕ワールド👑`, genre:"slot" },
+  { id: 99, name:`スロッター✕パチンカー`, display:`スロッター✕パチンカー⚡️`, genre:"both" },
+  { id:100, name:`クロロ調査隊超トレジャーＳ`, display:`クロロ調査隊超トレジャーＳ⚡️`, genre:"slot" },
+  { id:101, name:`スロッター✕ワールドSMART`, display:`スロッター✕ワールドSMART⚡️`, genre:"slot" },
+  { id:102, name:`光るん✕ワールド`, display:`光るん✕ワールド✨`, genre:"slot" },
+  { id:103, name:`光るん✕スロッター`, display:`光るん✕スロッター✨`, genre:"slot" },
+  { id:104, name:`真✕スロッター`, display:`真✕スロッター⚔️`, genre:"slot" },
+  { id:105, name:`クロロえげつない愛知決戦Ｓ【道化師】`, display:`クロロえげつない愛知決戦Ｓ
+【道化師】👑`, genre:"slot" },
+  { id:106, name:`『超』クロロえげつないレンジャーアニバーサリーＳ`, display:`『超』クロロえげつないレンジャー
+アニバーサリーＳ👑`, genre:"slot" },
+  { id:107, name:`クロロえげつない岐阜決戦Ｓ【道化師】`, display:`クロロえげつない岐阜決戦Ｓ
+【道化師】👑`, genre:"slot" },
+  { id:108, name:`超トレジャースロッター`, display:`超トレジャースロッター⚡`, genre:"slot" },
+  { id:109, name:`クロロ調査隊超トレジャーＳ【神】`, display:`クロロ調査隊超トレジャーＳ【神】👑`, genre:"slot" },
+  { id:110, name:`スロッター✕スロッターALL STAR【神】`, display:`スロッター✕スロッターALL STAR【神】👑`, genre:"slot" },
+  { id:111, name:`クロロ調査隊チーム関西喰種S/P`, display:`クロロ調査隊チーム関西喰種S/P⚡`, genre:"slot" },
+  { id:112, name:`クロロえげつないＷマンSUPERダブルＳ`, display:`クロロえげつないＷマン
+SUPERダブルＳ⚡`, genre:"slot" },
+  { id:113, name:`クロロ調査隊チームオヌヌメＳ`, display:`クロロ調査隊チームオヌヌメＳ⚡`, genre:"slot" },
+  { id:114, name:`クロロえげつない調査隊マシンガンＳ`, display:`クロロえげつない調査隊
+マシンガンＳ⚡`, genre:"slot" },
+  { id:115, name:`クロロ調査隊CUSTOM1234567Ｓ`, display:`クロロ調査隊CUSTOM1234567Ｓ⚡`, genre:"slot" },
+  { id:116, name:`クロロ調査隊大金セレクションＳ`, display:`クロロ調査隊大金セレクションＳ⚡`, genre:"slot" },
+  { id:117, name:`クロロ調査隊岩倉セレクションＳ`, display:`クロロ調査隊岩倉セレクションＳ⚡`, genre:"slot" },
+  { id:118, name:`クロロマスクＧＰ`, display:`クロロマスクＧＰ⚡`, genre:"pachinko" },
+  { id:119, name:`クロロ調査隊オールスターＳ【神】`, display:`クロロ調査隊オールスターＳ【神】⚡`, genre:"slot" },
+  { id:120, name:`スロッター✕ワールドCUSTOM1234567`, display:`スロッター✕ワールドCUSTOM1234567⚡`, genre:"slot" },
+  { id:121, name:`クロロ調査隊チーム山神`, display:`クロロ調査隊チーム山神⚡`, genre:"slot" },
+  { id:122, name:`クロロむっちゃマスクSSS`, display:`クロロむっちゃマスクSSS🔥`, genre:"slot" },
+  { id:123, name:`クロロ調査隊TheカスタマーＺＺ`, display:`クロロ調査隊TheカスタマーＺＺ⚡`, genre:"slot" },
+  { id:124, name:`クロロ調査隊チーム無想転生`, display:`クロロ調査隊チーム無想転生⚡`, genre:"slot" },
+  { id:125, name:`スロッター✕ワールドALL STAR【神】`, display:`スロッター✕ワールドALL STAR【神】👑`, genre:"slot" },
+  { id:126, name:`スロッター✕ワールドハーフセレクションvol.5`, display:`スロッター✕ワールド
+ハーフセレクションvol.5⚡`, genre:"slot" },
+  { id:127, name:`真Ｓ✕ワールド`, display:`真Ｓ✕ワールド⚔️`, genre:"slot" },
+  { id:128, name:`スロッター特別分析レポート来店取材`, display:`スロッター特別分析レポート⚡`, genre:"both" },
+  { id:129, name:`クロロ調査隊チーム1149`, display:`クロロ調査隊チーム1149⚡`, genre:"slot" },
+  { id:130, name:`クロロマスクＰ`, display:`クロロマスクＰ⚡`, genre:"pachinko" },
+  { id:131, name:`『超』クロロえげつない調査隊アニバーサリーＳ`, display:`『超』クロロえげつない調査隊👑
+アニバーサリーＳ`, genre:"slot" },
+  { id:132, name:`スロッター特別分析レポート`, display:`スロッター特別分析レポート⚡`, genre:"slot" },
+  { id:133, name:`クロロえげつない調査隊ミニバーサリーＳ`, display:`クロロえげつない調査隊
+ミニバーサリーＳ👑`, genre:"slot" },
+  { id:134, name:`スロッター✕ワールドハーフセレクションvol.4`, display:`スロッター✕ワールド
+ハーフセレクションvol.4⚡`, genre:"slot" },
+  { id:135, name:`クロロ調査隊ハーフセレクションＳvol.5`, display:`クロロ調査隊ハーフセレクションＳvol.5⚡`, genre:"slot" },
+  { id:136, name:`クロロ特別分析チームＳ`, display:`クロロ特別分析チームＳ⚡`, genre:"slot" },
+  { id:137, name:`クロロ調査隊SUPERトリプルＳ`, display:`クロロ調査隊SUPERトリプルＳ✨`, genre:"slot" },
+  { id:138, name:`クロロ調査隊チームカスタムＳvol.10`, display:`クロロ調査隊チームカスタムＳvol.10⚡`, genre:"slot" },
+  { id:139, name:`超トレジャースロッター【神】`, display:`超トレジャースロッター【神】👑`, genre:"slot" },
+  { id:140, name:`クロロ調査隊チーム３９`, display:`クロロ調査隊チーム３９⚡`, genre:"slot" },
+  { id:141, name:`クロロ調査隊チーム超ドキＳ`, display:`クロロ調査隊チーム超ドキＳ⚡`, genre:"slot" },
+  { id:142, name:`クロロマスクＤＸ`, display:`クロロマスクＤＸ⚡`, genre:"slot" },
+  { id:143, name:`スロッター✕スロッターALL STAR【神】`, display:`スロッター✕スロッターALL STAR【神】 👑`, genre:"slot" },
+  { id:144, name:`クロロチーム`, display:`クロロチーム👑`, genre:"slot" },
+  { id:145, name:`クロロ調査隊チーム関東喰種Ｓ`, display:`クロロ調査隊チーム関東喰種Ｓ⚡`, genre:"slot" },
+  { id:146, name:`クロロ調査隊チームカスタムＳvol.30`, display:`クロロ調査隊チームカスタムＳvol.30⚡`, genre:"slot" },
+  { id:147, name:`クロロえげつないレンジャーＨＲ`, display:`クロロえげつないレンジャーＨＲ⚾️`, genre:"slot" },
+  { id:148, name:`クロロえげつない三重決戦Ｓ【道化師】`, display:`クロロえげつない三重決戦Ｓ【道化師】👑`, genre:"slot" },
+  { id:149, name:`スロパチンカーワールド`, display:`スロパチンカーワールド⚡`, genre:"both" },
+  { id:150, name:`クロロ調査隊チームカスタムＳvol.20`, display:`クロロ調査隊チームカスタムＳvol.20⚡`, genre:"slot" },
+  { id:151, name:`クロロ調査隊チームGOD`, display:`クロロ調査隊チームGOD⚡`, genre:"slot" },
+  { id:152, name:`クロロ調査隊ハーフセレクションＳvol.8`, display:`クロロ調査隊ハーフセレクションＳvol.8⚡`, genre:"slot" },
+  { id:153, name:`クロロ調査隊ハーフセレクションＳvol.2`, display:`クロロ調査隊ハーフセレクションＳvol.2⚡`, genre:"slot" },
+  { id:154, name:`クロロえげつない調査隊特盛アニバーサリーＳ`, display:`クロロえげつない調査隊
+特盛アニバーサリーＳ👑`, genre:"slot" },
+  { id:155, name:`クロロエンジェルＳ来店`, display:`クロロエンジェルＳ来店⚡`, genre:"both" },
+  { id:156, name:`クロロ調査隊神出鬼没Ｓ`, display:`クロロ調査隊神出鬼没Ｓ⚡`, genre:"slot" },
 ];
 
 let campaigns = JSON.parse(localStorage.getItem('campaigns') || 'null') || DEFAULT_CAMPAIGNS;
@@ -650,10 +791,15 @@ async function callAI(prompt) {
   }
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     })
   });
@@ -796,6 +942,22 @@ function resolveUnknown() {
   applyScheduleData(json, dateStr, appendMode, staffRaw);
 }
 
+// ========== 正規化マッチング ==========
+function normalizeName(s) {
+  return s.normalize('NFKC').replace(/\s/g, '').replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, '-').toLowerCase();
+}
+
+function findCampaignByName(name) {
+  const normInput = normalizeName(name);
+  const exact = campaigns.find(c => normalizeName(c.name) === normInput);
+  if (exact) return exact;
+  const partial = campaigns.find(c => {
+    const normMaster = normalizeName(c.name);
+    return normInput === normMaster || normInput.includes(normMaster) || normMaster.includes(normInput);
+  });
+  return partial || null;
+}
+
 async function processSchedule(appendMode) {
   const raw = document.getElementById('scheduleInput').value.trim();
   const staffRaw = document.getElementById('staffInput').value.trim();
@@ -807,7 +969,6 @@ async function processSchedule(appendMode) {
 
   document.getElementById('scheduleThinking').classList.add('show');
 
-  const campaignNames = campaigns.map(c => c.name).join('\n');
   const keywords = excludeKeywords.join(', ');
   const rules = otherRules;
 
@@ -831,9 +992,6 @@ A列: 取材名、B列: ホール名、C列以降: 都道府県・担当者・UR
 - 最終列が「有」「代」「九」その他の行は業務対象として含めてください
 - 「景品入荷」「クロロ景品」などの景品系取材は通常除外してください
 ${staffSection}
-【登録済み取材名一覧】
-${campaignNames}
-
 【除外キーワード】
 ${keywords || 'なし'}
 
@@ -845,19 +1003,27 @@ ${raw}
 
 以下のJSON形式のみ返してください。他のテキストは一切不要です：
 [
-  {"campaign": "取材名（登録済み取材名に最も近いもの）", "hall": "ホール名", "matched_campaign_id": 取材マスターのIDまたはnull},
+  {"campaign": "A列の取材名をそのまま正確に", "hall": "B列のホール名をそのまま正確に"},
   ...
 ]
-
-登録済み取材名と完全一致しない場合も、最も近いものを推測してmatched_campaign_idを設定してください。
-判断できない場合はnullにしてください。`;
+除外対象の行は含めないでください。`;
 
   try {
     const result = await callAI(prompt);
-    const json = JSON.parse(result.replace(/```json|```/g, '').trim());
+    const parsed = JSON.parse(result.replace(/```json|```/g, '').trim());
 
     const today = new Date();
     const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+
+    // ローカル正規化マッチングでIDを付与
+    const json = parsed.map(item => {
+      const matched = findCampaignByName(item.campaign);
+      return {
+        campaign: item.campaign,
+        hall: item.hall,
+        matched_campaign_id: matched ? matched.id : null
+      };
+    });
 
     // マスタ未登録チェック
     const unknownItems = json.filter(item => !item.matched_campaign_id);
