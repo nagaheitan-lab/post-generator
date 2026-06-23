@@ -46,9 +46,9 @@ header h1 { font-size: 16px; font-weight: 700; color: #fff; }
 }
 .nav-btn {
   flex: 1;
-  padding: 10px 4px;
+  padding: 10px 2px;
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
   color: #666;
   cursor: pointer;
   border: none;
@@ -265,7 +265,24 @@ select option { background: #1a1a2e; }
 }
 .ai-thinking.show { display: block; }
 
-.rules-section { margin-bottom: 10px; }
+.emoji-picker {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.emoji-btn {
+  width: 36px; height: 36px;
+  background: #0f0f1a; border: 1px solid #2a2a4a;
+  border-radius: 8px; font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.emoji-btn:active, .emoji-btn.selected { border-color: #e94560; background: #1a0f1a; }
+.emoji-btn.pinned { border-color: #ff9800; }
+.emoji-custom-row { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+.emoji-custom-row input { margin: 0; flex: 1; font-size: 18px; }
+.emoji-custom-row button { flex-shrink: 0; }
+
+
 .rules-section textarea { min-height: 100px; font-size: 13px; }
 
 .section-note { font-size: 12px; color: #888; margin-bottom: 10px; line-height: 1.6; }
@@ -284,11 +301,24 @@ select option { background: #1a1a2e; }
 <div id="panel-schedule" class="panel active">
   <div class="card">
     <div class="card-title">📅 当日スケジュール登録</div>
-    <p class="section-note">作業タブのA列（取材名）・B列（ホール名）をコピペしてください。<br>AIが本業務分を自動で間引きします。</p>
+
+    <label>① 当日スケジュール（取材名・ホール名・URL…）</label>
+    <p class="section-note">最終列が「無」の行は自動除外されます。</p>
     <div class="paste-area">
-      <textarea id="scheduleInput" rows="8" placeholder="取材名&#9;ホール名&#10;クロロ調査隊チームＳ&#9;ZAP蘇我店&#10;クロロ調査隊SUPERトリプルＳ&#9;第一プラザ船橋店&#10;..."></textarea>
+      <textarea id="scheduleInput" rows="6" placeholder="取材名&#9;ホール名&#10;クロロ調査隊チームＳ&#9;ZAP蘇我店&#10;クロロ調査隊SUPERトリプルＳ&#9;第一プラザ船橋店&#10;..."></textarea>
     </div>
-    <button class="btn btn-primary" onclick="processSchedule()">🤖 AIで解析・登録する</button>
+
+    <label style="margin-top:4px">② 各取材担当者表（ホール名・都道府県・企業名・担当者）</label>
+    <p class="section-note">「長瀬」担当のホールは残し、それ以外は除外します。未入力でもOKです。</p>
+    <div class="paste-area">
+      <textarea id="staffInput" rows="5" placeholder="将軍盛岡店&#9;岩手&#9;プロテラス&#9;鳩岡&#10;ノア上永谷店&#9;神奈川&#9;withdog&#9;多田&#10;ウエスタン行徳店&#9;千葉&#9;ガーデン&#9;長瀬&#10;..."></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-primary" style="margin:0;flex:1" onclick="processSchedule(false)">🆕 新規登録</button>
+      <button class="btn btn-secondary" style="margin:0;flex:1" onclick="processSchedule(true)">➕ 追加登録</button>
+    </div>
+    <p style="font-size:11px;color:#888;text-align:center;margin-bottom:8px">新規登録：リストをリセット　／　追加登録：今のリストに追記（重複スキップ）</p>
     <div class="ai-thinking" id="scheduleThinking">🤖 AIが解析中...</div>
   </div>
 
@@ -363,34 +393,53 @@ select option { background: #1a1a2e; }
 
 <!-- ===== パネル3: 進捗 ===== -->
 <div id="panel-progress" class="panel">
+
+  <!-- サマリー -->
   <div class="card">
     <div class="card-title">📊 本日の進捗</div>
     <div class="progress-bar-wrap">
       <div class="progress-bar" id="progressBar2" style="width:0%"></div>
     </div>
     <div class="stat-row">
-      <span>実施済み</span>
-      <span class="stat-val" id="doneCount2">0</span>
+      <span>✍️ ポスト済み（自分）</span>
+      <span class="stat-val" style="color:#e94560" id="statMyPosted">0</span>
     </div>
     <div class="stat-row">
-      <span>未実施</span>
-      <span class="stat-val" id="pendingCount">0</span>
+      <span>✅ 完了ホール（全体）</span>
+      <span class="stat-val" style="color:#4caf50" id="statAllDone">0</span>
+    </div>
+    <div class="stat-row">
+      <span>⚠️ 未報告ホール</span>
+      <span class="stat-val" style="color:#ff9800" id="statUnreported">0</span>
     </div>
     <div class="stat-row">
       <span>合計</span>
-      <span class="stat-val" id="totalCount2">0</span>
+      <span class="stat-val" id="statTotal">0</span>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">⏳ 未実施</div>
-    <div id="pendingList"></div>
+  <!-- 未報告ホール -->
+  <div class="card" id="unreportedCard">
+    <div class="card-title" style="color:#ff9800">⚠️ 未報告ホール</div>
+    <div id="unreportedList"></div>
+    <button class="btn btn-secondary" id="copyUnreportedBtn" onclick="copyUnreported()" style="margin-top:8px;display:none">
+      📋 未報告ホールをコピー（LINE問い合わせ用）
+    </button>
+    <div class="success-msg" id="copyUnreportedSuccess">✅ コピーしました！</div>
   </div>
 
+  <!-- ポスト済み（自分） -->
   <div class="card">
-    <div class="card-title">✅ 実施済み</div>
-    <div id="doneList"></div>
+    <div class="card-title" style="color:#e94560">✍️ ポスト済み（自分）</div>
+    <div id="myPostedList"></div>
   </div>
+
+  <!-- 完了ホール（全体） -->
+  <div class="card">
+    <div class="card-title" style="color:#4caf50">✅ 完了ホール（全体）</div>
+    <div id="allDoneList"></div>
+  </div>
+
 </div>
 
 <!-- ===== パネル4: マスタ管理 ===== -->
@@ -399,8 +448,14 @@ select option { background: #1a1a2e; }
     <div class="card-title">➕ 取材を追加</div>
     <label>取材名（略称でもOK）</label>
     <input type="text" id="newName" placeholder="例：クロロ調査隊チームＳ">
-    <label>表示名（絵文字含む）</label>
+    <label>表示名</label>
     <input type="text" id="newDisplay" placeholder="例：クロロ調査隊チームＳ⚡">
+    <label style="margin-top:2px">絵文字を選んで末尾に追加</label>
+    <div class="emoji-picker" id="masterEmojiPicker"></div>
+    <div class="emoji-custom-row">
+      <input type="text" id="masterCustomEmoji" placeholder="その他の絵文字を入力" maxlength="4">
+      <button class="btn btn-secondary btn-small" onclick="addCustomEmoji('master')">追加</button>
+    </div>
     <label>ジャンル</label>
     <div class="genre-row">
       <div class="genre-btn active" id="genre-slot" onclick="selectGenre('slot')">🎰 スロット</div>
@@ -432,6 +487,27 @@ select option { background: #1a1a2e; }
   </div>
 </div>
 
+<!-- ===== マスタ未登録モーダル ===== -->
+<div id="unknownModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;overflow-y:auto;padding:16px">
+  <div style="background:#1a1a2e;border:1px solid #e94560;border-radius:12px;padding:16px;max-width:480px;margin:0 auto">
+    <div style="font-size:13px;font-weight:700;color:#e94560;margin-bottom:6px">⚠️ マスタ未登録の取材名があります</div>
+    <p style="font-size:12px;color:#aaa;margin-bottom:14px">各ホールについて「除外」か「新規登録」を選んでください。</p>
+    <div id="unknownList"></div>
+    <button class="btn btn-primary" onclick="resolveUnknown()" style="margin-top:12px">✅ 確定して登録</button>
+  </div>
+</div>
+
+<!-- ===== パネル5: 長瀬担当 ===== -->
+<div id="panel-nagase" class="panel">
+  <div class="card">
+    <div class="card-title">🚶 長瀬担当ホール</div>
+    <p class="section-note">担当者表で「長瀬」が担当するホールの一覧です。<br>現地で人数を数えて機種を入力し、ポスト文を生成してください。</p>
+  </div>
+  <div id="nagaseList">
+    <p style="color:#888;font-size:13px;text-align:center;padding:24px">スケジュール登録後に表示されます</p>
+  </div>
+</div>
+
 <!-- ===== ボトムナビ ===== -->
 <nav class="bottom-nav">
   <button class="nav-btn active" onclick="switchPanel('schedule')" id="nav-schedule">
@@ -442,6 +518,9 @@ select option { background: #1a1a2e; }
   </button>
   <button class="nav-btn" onclick="switchPanel('progress')" id="nav-progress">
     <span class="nav-icon">📊</span>進捗
+  </button>
+  <button class="nav-btn" onclick="switchPanel('nagase')" id="nav-nagase">
+    <span class="nav-icon">🚶</span>長瀬担当
   </button>
   <button class="nav-btn" onclick="switchPanel('master')" id="nav-master">
     <span class="nav-icon">⚙️</span>マスタ
@@ -547,7 +626,8 @@ function switchPanel(name) {
   document.getElementById('panel-' + name).classList.add('active');
   document.getElementById('nav-' + name).classList.add('active');
   if (name === 'progress') renderProgress();
-  if (name === 'master') { renderMasterList(); loadRules(); }
+  if (name === 'master') { renderMasterList(); loadRules(); renderEmojiPicker('masterEmojiPicker', 'newDisplay'); }
+  if (name === 'nagase') renderNagaseList();
 }
 
 // ========== 人数変換 ==========
@@ -583,9 +663,147 @@ async function callAI(prompt) {
 }
 
 // ========== スケジュール登録 ==========
-async function processSchedule() {
+let pendingScheduleData = null;
+
+function applyScheduleData(json, dateStr, appendMode, staffRaw) {
+  if (!appendMode) {
+    todaySchedule = json.map((item, i) => ({
+      id: i + 1,
+      campaign: item.campaign,
+      hall: item.hall,
+      campaignId: item.matched_campaign_id,
+      posted: false,
+      dateStr
+    }));
+  } else {
+    const existingHalls = todaySchedule.map(s => s.hall);
+    const newItems = json.filter(item => !existingHalls.includes(item.hall));
+    const startId = todaySchedule.length > 0 ? Math.max(...todaySchedule.map(s => s.id)) + 1 : 1;
+    const appended = newItems.map((item, i) => ({
+      id: startId + i,
+      campaign: item.campaign,
+      hall: item.hall,
+      campaignId: item.matched_campaign_id,
+      posted: false,
+      dateStr
+    }));
+    const skipped = json.length - newItems.length;
+    todaySchedule = [...todaySchedule, ...appended];
+    if (appended.length === 0) {
+      alert(`追加できる新しいホールがありませんでした（${skipped}件は重複のためスキップ）`);
+      return;
+    }
+    const msg = skipped > 0
+      ? `✅ ${appended.length}件を追加しました（${skipped}件は重複スキップ）`
+      : `✅ ${appended.length}件を追加しました`;
+    save();
+    renderScheduleList();
+    document.getElementById('todayListCard').style.display = 'block';
+    document.getElementById('scheduleInput').value = '';
+    document.getElementById('staffInput').value = '';
+    alert(msg);
+    return;
+  }
+  save();
+  buildNagaseEntries(staffRaw);
+  renderScheduleList();
+  document.getElementById('todayListCard').style.display = 'block';
+  document.getElementById('scheduleInput').value = '';
+  document.getElementById('staffInput').value = '';
+  const nagaseCount = nagaseEntries.length;
+  const nagaseMsg = nagaseCount > 0 ? `\n長瀬担当: ${nagaseCount}件` : '';
+  alert(`✅ ${todaySchedule.length}件のスケジュールを登録しました（「無」・他担当者分は自動除外済み）${nagaseMsg}`);
+}
+
+function showUnknownModal(unknownItems) {
+  const list = document.getElementById('unknownList');
+  list.innerHTML = unknownItems.map((item, i) => `
+    <div style="background:#0f0f1a;border:1px solid #2a2a4a;border-radius:8px;padding:12px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:2px">${item.hall}</div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:10px">取材名: ${item.campaign}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+          <input type="radio" name="unknown_${i}" value="exclude" checked> <span style="font-size:12px;color:#e94560">除外する</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+          <input type="radio" name="unknown_${i}" value="register" onchange="toggleNewDisplay(${i}, this)"> <span style="font-size:12px;color:#4caf50">新規登録</span>
+        </label>
+      </div>
+      <div id="newDisplayWrap_${i}" style="display:none;margin-top:8px">
+        <input type="text" id="newDisplay_${i}" placeholder="表示名（絵文字含む）例: ${item.campaign}⚡"
+          style="margin:0 0 6px;font-size:12px" value="${item.campaign}">
+        <div style="font-size:11px;color:#aaa;margin-bottom:4px">絵文字を選んで末尾に追加</div>
+        <div class="emoji-picker" id="modalEmojiPicker_${i}"></div>
+        <div class="emoji-custom-row">
+          <input type="text" id="modalCustomEmoji_${i}" placeholder="その他" maxlength="4" style="font-size:16px">
+          <button class="btn btn-secondary btn-small" onclick="addCustomEmoji('modal',${i})">追加</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <div class="genre-btn active" id="ng_slot_${i}" onclick="selectNGGenre(${i},'slot')" style="flex:1;padding:6px;font-size:11px">🎰 スロット</div>
+          <div class="genre-btn" id="ng_pachinko_${i}" onclick="selectNGGenre(${i},'pachinko')" style="flex:1;padding:6px;font-size:11px">🎯 パチンコ</div>
+          <div class="genre-btn" id="ng_both_${i}" onclick="selectNGGenre(${i},'both')" style="flex:1;padding:6px;font-size:11px">🎮 両方</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('unknownModal').style.display = 'block';
+  // ジャンル選択状態を管理
+  window._ngGenres = unknownItems.map(() => 'slot');
+  window._unknownItems = unknownItems;
+  // 各行の絵文字ピッカーを描画
+  unknownItems.forEach((_, i) => {
+    renderEmojiPicker(`modalEmojiPicker_${i}`, `newDisplay_${i}`);
+  });
+}
+
+function toggleNewDisplay(i, radio) {
+  document.getElementById(`newDisplayWrap_${i}`).style.display =
+    radio.value === 'register' ? 'block' : 'none';
+}
+
+function selectNGGenre(i, genre) {
+  window._ngGenres[i] = genre;
+  ['slot','pachinko','both'].forEach(g => {
+    document.getElementById(`ng_${g}_${i}`).classList.toggle('active', g === genre);
+  });
+}
+
+function resolveUnknown() {
+  const { json, dateStr, appendMode, staffRaw } = pendingScheduleData;
+  const unknownItems = window._unknownItems;
+
+  unknownItems.forEach((item, i) => {
+    const action = document.querySelector(`input[name="unknown_${i}"]:checked`)?.value;
+    if (action === 'exclude') {
+      // 除外：jsonから該当を取り除く
+      const idx = json.findIndex(j => j.hall === item.hall && j.campaign === item.campaign);
+      if (idx !== -1) json.splice(idx, 1);
+    } else if (action === 'register') {
+      // 新規登録：マスタに追加してIDを紐付け
+      const displayName = document.getElementById(`newDisplay_${i}`).value.trim() || item.campaign;
+      const genre = window._ngGenres[i] || 'slot';
+      const newId = nextId++;
+      campaigns.push({ id: newId, name: item.campaign, display: displayName, genre });
+      // jsonのmatched_campaign_idを更新
+      const target = json.find(j => j.hall === item.hall && j.campaign === item.campaign);
+      if (target) target.matched_campaign_id = newId;
+      save();
+    }
+  });
+
+  document.getElementById('unknownModal').style.display = 'none';
+  pendingScheduleData = null;
+  applyScheduleData(json, dateStr, appendMode, staffRaw);
+}
+
+async function processSchedule(appendMode) {
   const raw = document.getElementById('scheduleInput').value.trim();
-  if (!raw) { alert('スケジュールを貼り付けてください'); return; }
+  const staffRaw = document.getElementById('staffInput').value.trim();
+  if (!raw) { alert('当日スケジュールを貼り付けてください'); return; }
+
+  if (!appendMode && todaySchedule.length > 0) {
+    if (!confirm('現在のスケジュールをリセットして新規登録しますか？')) return;
+  }
 
   document.getElementById('scheduleThinking').classList.add('show');
 
@@ -593,9 +811,26 @@ async function processSchedule() {
   const keywords = excludeKeywords.join(', ');
   const rules = otherRules;
 
-  const prompt = `あなたはパチンコホールの取材広告業務のアシスタントです。
-以下のスケジュールデータから、本業務（来店取材）に関係する行だけを抽出してください。
+  const staffSection = staffRaw ? `
+【各取材担当者表】
+※ この表に載っているホールのうち、担当者列が「長瀬」の行は業務対象として残してください。
+※ 担当者列が「長瀬」以外の行は除外してください。
+※ この表に載っていないホールはそのまま対象として扱ってください。
+${staffRaw}
+` : '';
 
+  const prompt = `あなたはパチンコホールの取材広告業務のアシスタントです。
+以下のスケジュールデータを解析してください。
+
+【列の構成】
+A列: 取材名、B列: ホール名、C列以降: 都道府県・担当者・URLなど管理情報
+最終列: 「有」「代」「九」などは業務対象。「無」は間引き対象（除外）。
+
+【重要ルール】
+- 最終列が「無」の行は必ず除外してください
+- 最終列が「有」「代」「九」その他の行は業務対象として含めてください
+- 「景品入荷」「クロロ景品」などの景品系取材は通常除外してください
+${staffSection}
 【登録済み取材名一覧】
 ${campaignNames}
 
@@ -605,10 +840,10 @@ ${keywords || 'なし'}
 【その他ルール】
 ${rules || 'なし'}
 
-【スケジュールデータ】
+【当日スケジュールデータ】
 ${raw}
 
-以下のJSON形式で返してください。他のテキストは一切不要です：
+以下のJSON形式のみ返してください。他のテキストは一切不要です：
 [
   {"campaign": "取材名（登録済み取材名に最も近いもの）", "hall": "ホール名", "matched_campaign_id": 取材マスターのIDまたはnull},
   ...
@@ -624,19 +859,15 @@ ${raw}
     const today = new Date();
     const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
 
-    todaySchedule = json.map((item, i) => ({
-      id: i + 1,
-      campaign: item.campaign,
-      hall: item.hall,
-      campaignId: item.matched_campaign_id,
-      posted: false,
-      dateStr
-    }));
+    // マスタ未登録チェック
+    const unknownItems = json.filter(item => !item.matched_campaign_id);
+    if (unknownItems.length > 0) {
+      pendingScheduleData = { json, dateStr, appendMode, staffRaw };
+      showUnknownModal(unknownItems);
+      return;
+    }
 
-    save();
-    renderScheduleList();
-    document.getElementById('todayListCard').style.display = 'block';
-    alert(`✅ ${todaySchedule.length}件のスケジュールを登録しました`);
+    applyScheduleData(json, dateStr, appendMode, staffRaw);
   } catch(e) {
     alert('エラー: ' + e.message);
   } finally {
@@ -878,7 +1109,7 @@ function copyPost() {
 function markAsDone() {
   if (!currentHallId) return;
   const item = todaySchedule.find(s => s.id === currentHallId);
-  if (item) { item.posted = true; save(); }
+  if (item) { item.posted = true; item.allDone = true; save(); }
   document.getElementById('markDoneBtn').textContent = '✅ 実施済みにしました';
   document.getElementById('markDoneBtn').disabled = true;
   renderScheduleList();
@@ -886,33 +1117,175 @@ function markAsDone() {
 
 // ========== 進捗 ==========
 function renderProgress() {
-  const done = todaySchedule.filter(s => s.posted);
-  const pending = todaySchedule.filter(s => !s.posted);
   const total = todaySchedule.length;
+  // ポスト済み（自分）= posted フラグ
+  const myPosted = todaySchedule.filter(s => s.posted);
+  // 完了ホール（全体）= posted または allDone フラグ
+  const allDone = todaySchedule.filter(s => s.allDone);
+  // 未報告 = allDone でないもの
+  const unreported = todaySchedule.filter(s => !s.allDone);
 
-  document.getElementById('doneCount2').textContent = done.length;
-  document.getElementById('pendingCount').textContent = pending.length;
-  document.getElementById('totalCount2').textContent = total;
-  document.getElementById('progressBar2').style.width = total ? (done.length/total*100)+'%' : '0%';
+  // サマリー更新
+  document.getElementById('statMyPosted').textContent = myPosted.length;
+  document.getElementById('statAllDone').textContent = allDone.length;
+  document.getElementById('statUnreported').textContent = unreported.length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('progressBar2').style.width = total ? (allDone.length/total*100)+'%' : '0%';
 
-  const renderItem = (s) => {
+  const makeItem = (s, opts = {}) => {
     const c = campaigns.find(c => c.id === s.campaignId);
-    return `<div class="schedule-item">
-      <div class="si-status ${s.posted ? 'done' : ''}"></div>
+    const displayName = c ? c.display : s.campaign;
+    const myBadge = s.posted ? '<span style="font-size:10px;color:#e94560;margin-left:4px">✍️自分</span>' : '';
+    return `<div class="schedule-item" style="${opts.style || ''}">
+      <div class="si-status ${s.allDone ? 'done' : ''}" style="${s.posted ? 'background:#e94560' : ''}"></div>
       <div class="si-info">
-        <div class="si-name">${s.hall}</div>
-        <div class="si-campaign">${c ? c.display : s.campaign}</div>
+        <div class="si-name">${s.hall}${myBadge}</div>
+        <div class="si-campaign">${displayName}</div>
       </div>
+      ${opts.action || ''}
     </div>`;
   };
 
-  document.getElementById('pendingList').innerHTML = pending.length
-    ? pending.map(renderItem).join('')
-    : '<p style="color:#888;font-size:13px;text-align:center;padding:12px">未実施なし ✅</p>';
+  // 未報告リスト
+  const unreportedEl = document.getElementById('unreportedList');
+  const copyBtn = document.getElementById('copyUnreportedBtn');
+  if (unreported.length === 0) {
+    unreportedEl.innerHTML = '<p style="color:#4caf50;font-size:13px;text-align:center;padding:12px">全ホール完了 ✅</p>';
+    copyBtn.style.display = 'none';
+  } else {
+    unreportedEl.innerHTML = unreported.map(s =>
+      makeItem(s, {
+        style: 'border-color:#ff9800;background:#1a1500',
+        action: `<button class="btn btn-small" style="background:#ff9800;color:#000;font-size:11px" onclick="markAllDone(${s.id})">完了</button>`
+      })
+    ).join('');
+    copyBtn.style.display = 'block';
+  }
 
-  document.getElementById('doneList').innerHTML = done.length
-    ? done.map(renderItem).join('')
-    : '<p style="color:#888;font-size:13px;text-align:center;padding:12px">まだ実施済みがありません</p>';
+  // ポスト済み（自分）リスト
+  document.getElementById('myPostedList').innerHTML = myPosted.length
+    ? myPosted.map(s => makeItem(s, {
+        action: `<button class="btn btn-secondary btn-small" onclick="unmarkPosted(${s.id})" style="font-size:10px">戻す</button>`
+      })).join('')
+    : '<p style="color:#888;font-size:13px;text-align:center;padding:12px">まだポストしていません</p>';
+
+  // 完了ホール（全体）リスト
+  document.getElementById('allDoneList').innerHTML = allDone.length
+    ? allDone.map(s => makeItem(s, {
+        style: 'opacity:0.65',
+        action: `<button class="btn btn-secondary btn-small" onclick="unmarkAllDone(${s.id})" style="font-size:10px">戻す</button>`
+      })).join('')
+    : '<p style="color:#888;font-size:13px;text-align:center;padding:12px">まだ完了ホールがありません</p>';
+}
+
+// 完了マーク（手動・他担当者確認済み）
+function markAllDone(id) {
+  const item = todaySchedule.find(s => s.id === id);
+  if (item) { item.allDone = true; save(); }
+  renderProgress();
+}
+
+function unmarkAllDone(id) {
+  const item = todaySchedule.find(s => s.id === id);
+  if (item) { item.allDone = false; save(); }
+  renderProgress();
+}
+
+// 自分のポスト済みを取り消し（修正用）
+function unmarkPosted(id) {
+  const item = todaySchedule.find(s => s.id === id);
+  if (!item) return;
+  if (!confirm(`「${item.hall}」のポスト済みを取り消しますか？`)) return;
+  item.posted = false;
+  item.allDone = false;
+  save();
+  renderProgress();
+}
+
+// 未報告ホールをLINE用にコピー
+function copyUnreported() {
+  const unreported = todaySchedule.filter(s => !s.allDone);
+  if (!unreported.length) return;
+  const text = '【未報告ホール確認依頼】\n'
+    + unreported.map(s => {
+        const c = campaigns.find(c => c.id === s.campaignId);
+        return `・${s.hall}（${c ? c.display : s.campaign}）`;
+      }).join('\n')
+    + '\n\n上記ホールのポストがまだ確認できていません。ご確認をお願いいたします。';
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById('copyUnreportedSuccess');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 2000);
+  });
+}
+
+
+// ========== 絵文字ピッカー ==========
+// 追加の絵文字（マスタに登録のないものも保存）
+let extraEmojis = JSON.parse(localStorage.getItem('extraEmojis') || '[]');
+
+function getEmojiList() {
+  // マスタ登録済み表示名から絵文字を抽出（使用頻度カウント）
+  const emojiRegex = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu;
+  const freq = {};
+  campaigns.forEach(c => {
+    const found = [...(c.display.match(emojiRegex) || [])];
+    found.forEach(e => { freq[e] = (freq[e] || 0) + 1; });
+  });
+  // ⚡を先頭固定
+  const sorted = Object.entries(freq)
+    .filter(([e]) => e !== '⚡')
+    .sort((a, b) => b[1] - a[1])
+    .map(([e]) => e);
+  const base = ['⚡', ...sorted];
+  // extraEmojisのうち未登録のものを末尾に追加
+  extraEmojis.forEach(e => { if (!base.includes(e)) base.push(e); });
+  return base;
+}
+
+function renderEmojiPicker(containerId, targetInputId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const emojis = getEmojiList();
+  container.innerHTML = emojis.map((e, i) =>
+    `<button class="emoji-btn${i === 0 ? ' pinned' : ''}" title="${e}"
+      onclick="insertEmoji('${targetInputId}','${e}')">${e}</button>`
+  ).join('');
+}
+
+function insertEmoji(inputId, emoji) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  // 末尾に追加（重複は除く）
+  const val = input.value.replace(/\s+$/, '');
+  if (!val.endsWith(emoji)) input.value = val + emoji;
+  input.focus();
+}
+
+function addCustomEmoji(mode, idx) {
+  let emoji, inputId;
+  if (mode === 'master') {
+    emoji = document.getElementById('masterCustomEmoji').value.trim();
+    inputId = 'newDisplay';
+    document.getElementById('masterCustomEmoji').value = '';
+  } else {
+    emoji = document.getElementById(`modalCustomEmoji_${idx}`).value.trim();
+    inputId = `newDisplay_${idx}`;
+    document.getElementById(`modalCustomEmoji_${idx}`).value = '';
+  }
+  if (!emoji) return;
+  // extraEmojisに保存
+  if (!extraEmojis.includes(emoji)) {
+    extraEmojis.push(emoji);
+    localStorage.setItem('extraEmojis', JSON.stringify(extraEmojis));
+  }
+  insertEmoji(inputId, emoji);
+  // ピッカーを再描画
+  if (mode === 'master') {
+    renderEmojiPicker('masterEmojiPicker', 'newDisplay');
+  } else {
+    renderEmojiPicker(`modalEmojiPicker_${idx}`, `newDisplay_${idx}`);
+  }
 }
 
 // ========== マスタ ==========
@@ -974,6 +1347,238 @@ function saveRules() {
   const el = document.getElementById('rulesSuccess');
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 2000);
+}
+
+// ========== 長瀬担当 ==========
+let nagaseEntries = JSON.parse(localStorage.getItem('nagaseEntries') || '[]');
+// 各エントリ: { id, hall, campaign, campaignId, slotCount, pachinkoCount, machines, posted }
+
+function saveNagase() {
+  localStorage.setItem('nagaseEntries', JSON.stringify(nagaseEntries));
+}
+
+// スケジュール登録時に長瀬エントリを構築（processScheduleから呼ぶ）
+function buildNagaseEntries(staffRaw) {
+  if (!staffRaw) return;
+  const lines = staffRaw.split('\n').map(l => l.trim()).filter(Boolean);
+  const nagaseLines = lines.filter(l => {
+    const cols = l.split('\t');
+    // 最終列が担当者名。「長瀬」を含む行を抽出
+    return cols[cols.length - 1].includes('長瀬');
+  });
+
+  nagaseEntries = nagaseLines.map((line, i) => {
+    const cols = line.split('\t');
+    const hall = cols[0] || '';
+    // 当日スケジュールと照合
+    const matched = todaySchedule.filter(s =>
+      s.hall === hall || s.hall.includes(hall) || hall.includes(s.hall)
+    );
+    if (matched.length > 0) {
+      return matched.map(s => ({
+        id: `nagase_${i}_${s.id}`,
+        hall: s.hall,
+        campaign: s.campaign,
+        campaignId: s.campaignId,
+        slotCount: null,
+        pachinkoCount: null,
+        machines: [],
+        posted: false
+      }));
+    } else {
+      return [{
+        id: `nagase_${i}`,
+        hall,
+        campaign: '',
+        campaignId: null,
+        slotCount: null,
+        pachinkoCount: null,
+        machines: [],
+        posted: false
+      }];
+    }
+  }).flat();
+  saveNagase();
+}
+
+function renderNagaseList() {
+  const el = document.getElementById('nagaseList');
+  if (!nagaseEntries.length) {
+    el.innerHTML = '<p style="color:#888;font-size:13px;text-align:center;padding:24px">スケジュール登録後に表示されます</p>';
+    return;
+  }
+  el.innerHTML = nagaseEntries.map(entry => {
+    const campaign = entry.campaignId ? campaigns.find(c => c.id === entry.campaignId) : null;
+    const displayName = campaign ? campaign.display : (entry.campaign || '取材名未登録');
+    const genre = campaign ? campaign.genre : 'slot';
+    const slotPub = convertCount(entry.slotCount);
+    const pachPub = convertCount(entry.pachinkoCount);
+    const machineList = (entry.machines || []).map((m, i) =>
+      `<span class="machine-tag">${m}<button onclick="nagaseRemoveMachine('${entry.id}',${i})">×</button></span>`
+    ).join('');
+    const machLen = (entry.machines || []).join('').length + Math.max(0, (entry.machines||[]).length - 1);
+
+    return `
+    <div class="card" id="nagase-card-${entry.id}" style="${entry.posted ? 'opacity:0.5' : ''}">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🏠 ${entry.hall}</span>
+        ${entry.posted ? '<span style="color:#4caf50;font-size:11px">✅ポスト済</span>' : ''}
+      </div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:10px">${displayName}</div>
+
+      <label>稼働人数（実数）</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1">
+          <label style="font-size:11px">スロット</label>
+          <input type="number" id="nagase-slot-${entry.id}" value="${entry.slotCount || ''}" placeholder="例：85" oninput="nagaseRecalc('${entry.id}')">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:11px">パチンコ</label>
+          <input type="number" id="nagase-pachinko-${entry.id}" value="${entry.pachinkoCount || ''}" placeholder="不要なら空" oninput="nagaseRecalc('${entry.id}')">
+        </div>
+      </div>
+      <div class="info-row"><span>スロット公表</span><span class="highlight" id="nagase-slot-pub-${entry.id}">${slotPub ? slotPub+'名' : '—'}</span></div>
+      <div class="info-row"><span>パチンコ公表</span><span class="highlight" id="nagase-pachinko-pub-${entry.id}">${pachPub ? pachPub+'名' : '—'}</span></div>
+      <hr class="divider">
+
+      <label>高稼働機種（最大5機種・合計40文字）</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input type="text" id="nagase-machine-input-${entry.id}" placeholder="機種名を入力してEnter"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();nagaseAddMachine('${entry.id}')}"
+          style="margin:0;flex:1">
+        <button class="btn btn-secondary btn-small" onclick="nagaseAddMachine('${entry.id}')">追加</button>
+      </div>
+      <div id="nagase-machine-tags-${entry.id}" style="margin-bottom:6px;min-height:28px">${machineList}</div>
+      <div class="char-count ${machLen > 40 ? 'over' : ''}" id="nagase-machine-count-${entry.id}">${machLen} / 40文字</div>
+
+      <button class="btn btn-primary" onclick="nagaseGenPost('${entry.id}')">🤖 ポスト文を生成</button>
+
+      <div id="nagase-result-${entry.id}" style="display:none;margin-top:10px">
+        <div class="result-box" id="nagase-result-box-${entry.id}"></div>
+        <button class="btn btn-primary" onclick="nagaseCopy('${entry.id}')">📋 コピーする</button>
+        <div class="success-msg" id="nagase-copy-success-${entry.id}">✅ コピーしました！</div>
+        <button class="btn btn-success" onclick="nagaseMarkDone('${entry.id}')">✅ ポスト済みにする</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function nagaseRecalc(id) {
+  const entry = nagaseEntries.find(e => e.id === id);
+  if (!entry) return;
+  const s = parseInt(document.getElementById(`nagase-slot-${id}`).value) || null;
+  const p = parseInt(document.getElementById(`nagase-pachinko-${id}`).value) || null;
+  entry.slotCount = s;
+  entry.pachinkoCount = p;
+  document.getElementById(`nagase-slot-pub-${id}`).textContent = s ? convertCount(s)+'名' : '—';
+  document.getElementById(`nagase-pachinko-pub-${id}`).textContent = p ? convertCount(p)+'名' : '—';
+  saveNagase();
+}
+
+function nagaseAddMachine(id) {
+  const entry = nagaseEntries.find(e => e.id === id);
+  if (!entry) return;
+  const input = document.getElementById(`nagase-machine-input-${id}`);
+  const name = input.value.trim();
+  if (!name || (entry.machines||[]).length >= 5) return;
+  if (!entry.machines) entry.machines = [];
+  entry.machines.push(name);
+  input.value = '';
+  saveNagase();
+  nagaseUpdateMachineTags(id, entry.machines);
+}
+
+function nagaseRemoveMachine(id, idx) {
+  const entry = nagaseEntries.find(e => e.id === id);
+  if (!entry) return;
+  entry.machines.splice(idx, 1);
+  saveNagase();
+  nagaseUpdateMachineTags(id, entry.machines);
+}
+
+function nagaseUpdateMachineTags(id, machines) {
+  const container = document.getElementById(`nagase-machine-tags-${id}`);
+  if (!container) return;
+  container.innerHTML = machines.map((m, i) =>
+    `<span class="machine-tag">${m}<button onclick="nagaseRemoveMachine('${id}',${i})">×</button></span>`
+  ).join('');
+  const len = machines.join('').length + Math.max(0, machines.length - 1);
+  const el = document.getElementById(`nagase-machine-count-${id}`);
+  if (el) { el.textContent = `${len} / 40文字`; el.className = 'char-count' + (len > 40 ? ' over' : ''); }
+}
+
+function nagaseGetMachinesText(machines) {
+  if (!machines || !machines.length) return null;
+  let result = [], total = 0;
+  for (const m of machines) {
+    const add = m.length + (result.length > 0 ? 1 : 0);
+    if (total + add > 40) break;
+    result.push(m);
+    total += add;
+  }
+  return result.join('\n・');
+}
+
+function nagaseGenPost(id) {
+  const entry = nagaseEntries.find(e => e.id === id);
+  if (!entry) return;
+  const campaign = entry.campaignId ? campaigns.find(c => c.id === entry.campaignId) : null;
+  const genre = campaign ? campaign.genre : 'slot';
+  const displayName = campaign ? campaign.display : (entry.campaign || '');
+  const today = new Date();
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+  const timeType = getTimeType();
+  const isNight = timeType === 'night' || timeType === 'evening';
+  const slotPub = convertCount(entry.slotCount);
+  const pachPub = convertCount(entry.pachinkoCount);
+  const machinesText = nagaseGetMachinesText(entry.machines || []);
+
+  let counterLine = '';
+  if (genre === 'slot' || (!entry.pachinkoCount && entry.slotCount)) {
+    counterLine = isNight
+      ? `スロットコーナーのピーク時稼働約${slotPub || '??'}名`
+      : `スロットコーナーの稼働約${slotPub || '??'}名`;
+  } else if (genre === 'pachinko') {
+    counterLine = isNight
+      ? `パチンココーナーのピーク時稼働約${pachPub || '??'}名`
+      : `パチンココーナーの稼働約${pachPub || '??'}名`;
+  } else {
+    const parts = [];
+    if (slotPub) parts.push(isNight ? `スロットコーナーのピーク時稼働約${slotPub}名` : `スロットコーナーの稼働約${slotPub}名`);
+    if (pachPub) parts.push(isNight ? `パチンココーナーのピーク時稼働約${pachPub}名` : `パチンココーナーの稼働約${pachPub}名`);
+    counterLine = parts.join('\n');
+  }
+
+  let post = `${dateStr} ${displayName} ${entry.hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
+  if (machinesText) post += `\n\n📝高稼働機種\n・${machinesText}`;
+  if (isNight) {
+    post += `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`;
+  } else {
+    post += `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
+  }
+
+  document.getElementById(`nagase-result-box-${id}`).textContent = post;
+  document.getElementById(`nagase-result-${id}`).style.display = 'block';
+}
+
+function nagaseCopy(id) {
+  const text = document.getElementById(`nagase-result-box-${id}`).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById(`nagase-copy-success-${id}`);
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 2000);
+  });
+}
+
+function nagaseMarkDone(id) {
+  const entry = nagaseEntries.find(e => e.id === id);
+  if (!entry) return;
+  entry.posted = true;
+  saveNagase();
+  // 対応するスケジュールは「完了ホール」のみにカウント（自分のポスト済みではない）
+  const schedItem = todaySchedule.find(s => s.hall === entry.hall);
+  if (schedItem) { schedItem.allDone = true; save(); }
+  renderNagaseList();
 }
 
 // ========== 初期化 ==========
