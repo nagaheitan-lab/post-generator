@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取材ポストジェネレーター</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+  background: #0f0f1a;
+  color: #f0f0f0;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-bottom: 2px solid #e94560;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header h1 { font-size: 16px; font-weight: 700; color: #fff; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.time-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.time-day { background: #1a3a1a; color: #4caf50; border: 1px solid #4caf50; }
+.time-night { background: #1a1a3a; color: #7986cb; border: 1px solid #7986cb; }
+.time-evening { background: #3a2a1a; color: #ff9800; border: 1px solid #ff9800; }
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #16213e;
+  border-top: 1px solid #2a2a4a;
+  display: flex;
+  z-index: 100;
+}
+.nav-btn {
+  flex: 1;
+  padding: 10px 4px;
+  text-align: center;
+  font-size: 10px;
+  color: #666;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: color 0.2s;
+}
+.nav-btn .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+.nav-btn.active { color: #e94560; }
+
+.panel { display: none; padding: 14px; }
+.panel.active { display: block; }
+
+.card {
+  background: #1a1a2e;
+  border: 1px solid #2a2a4a;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 11px;
+  color: #e94560;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%;
+  background: #0f0f1a;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  color: #f0f0f0;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: #e94560; }
+textarea { resize: vertical; }
+select option { background: #1a1a2e; }
+
+.btn {
+  display: block; width: 100%;
+  padding: 13px; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+}
+.btn-primary { background: linear-gradient(135deg, #e94560, #c0392b); color: #fff; margin-bottom: 8px; }
+.btn-primary:active { opacity: 0.85; }
+.btn-secondary { background: #2a2a4a; color: #f0f0f0; margin-bottom: 8px; }
+.btn-secondary:active { background: #3a3a5a; }
+.btn-small { display: inline-block; width: auto; padding: 6px 12px; font-size: 12px; border-radius: 6px; margin: 0; }
+.btn-danger { background: #3a1a1a; color: #e94560; border: 1px solid #e94560; }
+.btn-success { background: #1a3a1a; color: #4caf50; border: 1px solid #4caf50; }
+
+.result-box {
+  background: #0f0f1a;
+  border: 1px solid #e94560;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 100px;
+  margin-bottom: 10px;
+  color: #f0f0f0;
+}
+
+.error-box {
+  background: #2a1a1a;
+  border: 1px solid #e94560;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #ff6b6b;
+}
+.error-box .error-title { font-weight: 700; margin-bottom: 4px; }
+
+.warning-box {
+  background: #2a2a1a;
+  border: 1px solid #ff9800;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #ffb74d;
+}
+
+.success-msg {
+  color: #4caf50; font-size: 12px;
+  text-align: center; margin-top: 4px;
+  display: none;
+}
+
+.schedule-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  background: #0f0f1a;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.schedule-item.posted { opacity: 0.5; }
+.schedule-item.posted .si-name { text-decoration: line-through; }
+.si-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ff9800;
+  flex-shrink: 0;
+}
+.si-status.done { background: #4caf50; }
+.si-info { flex: 1; min-width: 0; }
+.si-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-campaign { font-size: 11px; color: #888; margin-top: 2px; }
+.si-actions { display: flex; gap: 4px; }
+
+.progress-bar-wrap {
+  background: #0f0f1a;
+  border-radius: 20px;
+  height: 6px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #e94560, #ff9800);
+  border-radius: 20px;
+  transition: width 0.3s;
+}
+
+.stat-row {
+  display: flex; justify-content: space-between;
+  font-size: 13px; margin-bottom: 6px;
+}
+.stat-val { color: #e94560; font-weight: 700; font-size: 18px; }
+
+.machine-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #2a2a4a; border-radius: 20px;
+  padding: 4px 10px; font-size: 12px; margin: 2px;
+}
+.machine-tag button {
+  background: none; border: none; color: #e94560;
+  cursor: pointer; font-size: 14px; padding: 0;
+  line-height: 1; width: auto; margin: 0;
+}
+
+.genre-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.genre-btn {
+  flex: 1; padding: 8px; border: 1px solid #2a2a4a;
+  border-radius: 8px; background: #0f0f1a; color: #888;
+  font-size: 12px; cursor: pointer; text-align: center;
+  transition: all 0.2s;
+}
+.genre-btn.active { border-color: #e94560; color: #e94560; background: #1a0f1a; }
+
+.divider { border: none; border-top: 1px solid #2a2a4a; margin: 12px 0; }
+
+.info-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: #888; margin-bottom: 4px;
+}
+.highlight { color: #e94560; font-weight: 600; }
+
+.master-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px; background: #0f0f1a;
+  border: 1px solid #2a2a4a; border-radius: 8px; margin-bottom: 6px;
+}
+.mi-info { flex: 1; min-width: 0; }
+.mi-name { font-size: 13px; }
+.mi-display { font-size: 11px; color: #aaa; margin-top: 2px; }
+.mi-genre {
+  font-size: 10px; padding: 2px 6px;
+  border-radius: 10px; background: #2a2a4a; color: #aaa;
+  white-space: nowrap;
+}
+
+.paste-area {
+  background: #0f0f1a;
+  border: 2px dashed #2a2a4a;
+  border-radius: 10px; padding: 12px; margin-bottom: 10px;
+}
+.paste-area:focus-within { border-color: #e94560; }
+.paste-area textarea { border: none; background: transparent; margin-bottom: 0; padding: 0; font-size: 13px; }
+
+.char-count { font-size: 11px; color: #888; text-align: right; margin-top: -8px; margin-bottom: 10px; }
+.char-count.over { color: #e94560; }
+
+.match-suggestion {
+  background: #1a2a1a;
+  border: 1px solid #4caf50;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.match-suggestion .match-title { color: #4caf50; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin: 2px; }
+.tag-slot { background: #1a2a3a; color: #64b5f6; }
+.tag-pachinko { background: #2a1a2a; color: #ce93d8; }
+.tag-both { background: #2a2a1a; color: #ffcc02; }
+
+.ai-thinking {
+  text-align: center; padding: 20px;
+  color: #888; font-size: 13px;
+  display: none;
+}
+.ai-thinking.show { display: block; }
+
+.rules-section { margin-bottom: 10px; }
+.rules-section textarea { min-height: 100px; font-size: 13px; }
+
+.section-note { font-size: 12px; color: #888; margin-bottom: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📱 取材ポストジェネレーター</h1>
+  <div class="header-right">
+    <span class="time-badge time-day" id="timeBadge">☀️ --:--</span>
+  </div>
+</header>
+
+<!-- ===== パネル1: 当日スケジュール ===== -->
+<div id="panel-schedule" class="panel active">
+  <div class="card">
+    <div class="card-title">📅 当日スケジュール登録</div>
+    <p class="section-note">作業タブのA列（取材名）・B列（ホール名）をコピペしてください。<br>AIが本業務分を自動で間引きします。</p>
+    <div class="paste-area">
+      <textarea id="scheduleInput" rows="8" placeholder="取材名&#9;ホール名&#10;クロロ調査隊チームＳ&#9;ZAP蘇我店&#10;クロロ調査隊SUPERトリプルＳ&#9;第一プラザ船橋店&#10;..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="processSchedule()">🤖 AIで解析・登録する</button>
+    <div class="ai-thinking" id="scheduleThinking">🤖 AIが解析中...</div>
+  </div>
+
+  <div class="card" id="todayListCard" style="display:none">
+    <div class="card-title">📋 当日スケジュール</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+    <div class="stat-row">
+      <span>完了 / 合計</span>
+      <span><span class="stat-val" id="doneCount">0</span> / <span id="totalCount">0</span></span>
+    </div>
+    <hr class="divider">
+    <div id="scheduleList"></div>
+  </div>
+</div>
+
+<!-- ===== パネル2: 報告→ポスト生成 ===== -->
+<div id="panel-post" class="panel">
+  <div class="card">
+    <div class="card-title">📥 LINEの報告を貼り付け</div>
+    <div class="paste-area">
+      <textarea id="lineInput" rows="6" placeholder="お世話になっております。&#10;ホール名: ○○店&#10;スロット遊技人数: 100名&#10;高稼働機種&#10;ハナハナシリーズ&#10;..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="parseAndGenerate()">🤖 AIで解析してポスト文を生成</button>
+    <div class="ai-thinking" id="postThinking">🤖 AIが解析中...</div>
+  </div>
+
+  <div id="errorSection" style="display:none"></div>
+  <div id="warningSection" style="display:none"></div>
+
+  <div id="resultSection" style="display:none">
+    <div class="card">
+      <div class="card-title">📤 生成されたポスト文</div>
+      <div class="result-box" id="resultBox"></div>
+      <button class="btn btn-primary" onclick="copyPost()">📋 コピーする</button>
+      <div class="success-msg" id="copySuccess">✅ コピーしました！</div>
+      <button class="btn btn-success" id="markDoneBtn" onclick="markAsDone()">✅ ポスト済みにする</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✏️ 手動編集</div>
+      <p class="section-note">人数・機種名など修正が必要な場合はこちらで調整できます。</p>
+
+      <label>稼働人数（実数）</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1">
+          <label style="font-size:11px">スロット</label>
+          <input type="number" id="editSlot" placeholder="例：85" oninput="recalcCount()">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:11px">パチンコ</label>
+          <input type="number" id="editPachinko" placeholder="不要なら空" oninput="recalcCount()">
+        </div>
+      </div>
+      <div class="info-row"><span>スロット公表</span><span class="highlight" id="slotPublicEdit">—</span></div>
+      <div class="info-row"><span>パチンコ公表</span><span class="highlight" id="pachinkoPublicEdit">—</span></div>
+      <hr class="divider">
+
+      <label>高稼働機種（最大5機種・合計40文字）</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input type="text" id="machineInput" placeholder="機種名を入力してEnter" onkeydown="addMachineOnEnter(event)" style="margin:0;flex:1">
+        <button class="btn btn-secondary btn-small" onclick="addMachine()">追加</button>
+      </div>
+      <div id="machineTagsContainer" style="margin-bottom:6px;min-height:28px"></div>
+      <div class="char-count" id="machineCharCount">0 / 40文字</div>
+
+      <button class="btn btn-secondary" onclick="regenPost()">🔄 ポスト文を再生成</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== パネル3: 進捗 ===== -->
+<div id="panel-progress" class="panel">
+  <div class="card">
+    <div class="card-title">📊 本日の進捗</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progressBar2" style="width:0%"></div>
+    </div>
+    <div class="stat-row">
+      <span>実施済み</span>
+      <span class="stat-val" id="doneCount2">0</span>
+    </div>
+    <div class="stat-row">
+      <span>未実施</span>
+      <span class="stat-val" id="pendingCount">0</span>
+    </div>
+    <div class="stat-row">
+      <span>合計</span>
+      <span class="stat-val" id="totalCount2">0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⏳ 未実施</div>
+    <div id="pendingList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">✅ 実施済み</div>
+    <div id="doneList"></div>
+  </div>
+</div>
+
+<!-- ===== パネル4: マスタ管理 ===== -->
+<div id="panel-master" class="panel">
+  <div class="card">
+    <div class="card-title">➕ 取材を追加</div>
+    <label>取材名（略称でもOK）</label>
+    <input type="text" id="newName" placeholder="例：クロロ調査隊チームＳ">
+    <label>表示名（絵文字含む）</label>
+    <input type="text" id="newDisplay" placeholder="例：クロロ調査隊チームＳ⚡">
+    <label>ジャンル</label>
+    <div class="genre-row">
+      <div class="genre-btn active" id="genre-slot" onclick="selectGenre('slot')">🎰 スロット</div>
+      <div class="genre-btn" id="genre-pachinko" onclick="selectGenre('pachinko')">🎯 パチンコ</div>
+      <div class="genre-btn" id="genre-both" onclick="selectGenre('both')">🎮 両方</div>
+    </div>
+    <button class="btn btn-primary" onclick="addCampaign()">追加する</button>
+    <div class="success-msg" id="addSuccess" style="display:none">✅ 追加しました</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 登録済み取材一覧</div>
+    <div id="masterList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ 間引きルール</div>
+    <p class="section-note">スケジュールから除外するキーワードや条件を記入してください。<br>AIがこのルールを参考に間引きします。</p>
+    <div class="rules-section">
+      <label>除外キーワード（1行に1つ）</label>
+      <textarea id="excludeKeywords" rows="5" placeholder="例：&#10;アビバ&#10;プロテラス&#10;ガーデン"></textarea>
+    </div>
+    <div class="rules-section">
+      <label>その他ルール・メモ</label>
+      <textarea id="otherRules" rows="4" placeholder="例：&#10;・担当者が「大薮」以外の行は除外&#10;・URLがないものは除外"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="saveRules()">💾 ルールを保存</button>
+    <div class="success-msg" id="rulesSuccess">✅ 保存しました</div>
+  </div>
+</div>
+
+<!-- ===== ボトムナビ ===== -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="switchPanel('schedule')" id="nav-schedule">
+    <span class="nav-icon">📅</span>スケジュール
+  </button>
+  <button class="nav-btn" onclick="switchPanel('post')" id="nav-post">
+    <span class="nav-icon">✏️</span>ポスト生成
+  </button>
+  <button class="nav-btn" onclick="switchPanel('progress')" id="nav-progress">
+    <span class="nav-icon">📊</span>進捗
+  </button>
+  <button class="nav-btn" onclick="switchPanel('master')" id="nav-master">
+    <span class="nav-icon">⚙️</span>マスタ
+  </button>
+</nav>
+
+<script>
+// ========== 定数・データ ==========
+const CONVERSION_TABLE = [
+  [1,10],[11,20],[21,30],[31,40],[41,50],[51,70],[61,80],[71,90],
+  [81,100],[91,110],[101,120],[111,130],[121,140],[131,150],[141,160],
+  [151,180],[161,190],[171,200],[181,210],[191,220],[201,230],[211,240],
+  [221,250],[231,260],[241,270],[251,290],[261,300],[271,310],[281,320],
+  [291,330],[301,350],[311,360],[321,370],[331,380],[341,390],[351,400],
+  [361,410],[371,420],[381,430],[391,440],[401,460],[411,470],[421,480],
+  [431,490],[441,500]
+];
+
+const DEFAULT_CAMPAIGNS = [
+  { id:1,  name:'クロロ調査隊チームＳ',                   display:'クロロ調査隊チームＳ⚡',                          genre:'slot' },
+  { id:2,  name:'クロロ調査隊チームＰ',                   display:'クロロ調査隊チームＰ⚡',                          genre:'pachinko' },
+  { id:3,  name:'クロロ調査隊チームＬＴ',                  display:'クロロ調査隊チームＬＴ🔫',                        genre:'pachinko' },
+  { id:4,  name:'クロロ調査隊チーム光',                   display:'クロロ調査隊チーム光✨',                          genre:'slot' },
+  { id:5,  name:'クロロ調査隊マキシマムＳ',                display:'クロロ調査隊マキシマムＳ🔥',                      genre:'slot' },
+  { id:6,  name:'クロロ調査隊プレミアムＰ',               display:'クロロ調査隊プレミアムＰ👑',                      genre:'pachinko' },
+  { id:7,  name:'クロロ調査隊SUPERトリプルＳ',            display:'クロロ調査隊SUPERトリプルＳ✨',                   genre:'slot' },
+  { id:8,  name:'クロロ調査隊SUPERトリプルＰ',            display:'クロロ調査隊SUPERトリプルＰ✨',                   genre:'pachinko' },
+  { id:9,  name:'クロロ調査隊オールスターＳ',              display:'クロロ調査隊オールスターＳ⚡️',                    genre:'slot' },
+  { id:10, name:'クロロ調査隊アニバーサリーＳ',            display:'クロロ調査隊アニバーサリーＳ👑',                  genre:'slot' },
+  { id:11, name:'クロロ調査隊サプライズＳ',               display:'クロロ調査隊サプライズＳ👑',                      genre:'slot' },
+  { id:12, name:'クロロ調査隊チームＳＰ',                 display:'クロロ調査隊チームS/P⚡',                         genre:'both' },
+  { id:13, name:'クロロ調査隊チームオヌヌメＳ',           display:'クロロ調査隊チームオヌヌメＳ⚡',                  genre:'slot' },
+  { id:14, name:'クロロえげつない調査隊SUPERトリプルＳ',  display:'クロロえげつない調査隊 SUPERトリプルＳ👑',        genre:'slot' },
+  { id:15, name:'クロロえげつない調査隊アニバーサリーＳ', display:'クロロえげつない調査隊 アニバーサリーＳ👑',       genre:'slot' },
+  { id:16, name:'クロロえげつない調査隊ミニバーサリーＳ', display:'クロロえげつない調査隊 ミニバーサリーＳ👑',       genre:'slot' },
+  { id:17, name:'クロロえげつない調査隊オールスターＳ',   display:'クロロえげつない調査隊 オールスターＳ⚡️',        genre:'slot' },
+  { id:18, name:'クロロえげつない調査隊プレミアムＰ',     display:'クロロえげつない調査隊 プレミアムＰ👑',           genre:'pachinko' },
+  { id:19, name:'クロロレンジャーＳ',                     display:'クロロレンジャーＳ⚡',                            genre:'slot' },
+  { id:20, name:'クロロレンジャーＰ',                     display:'クロロレンジャーＰ⚡',                            genre:'pachinko' },
+  { id:21, name:'クロロレンジャーＰＰ',                   display:'クロロレンジャーＰＰ👑',                          genre:'pachinko' },
+  { id:22, name:'クロロレンジャーＳＳ',                   display:'クロロレンジャーＳＳ👑',                          genre:'slot' },
+  { id:23, name:'クロロレンジャーＭ',                     display:'クロロレンジャーＭ🔥',                            genre:'slot' },
+  { id:24, name:'クロロレンジャーＳＰ',                   display:'クロロレンジャーＳＰ⚡',                          genre:'both' },
+  { id:25, name:'クロロえげつないレンジャーオールスターＳ',display:'クロロえげつないレンジャー オールスターＳ⚡️',  genre:'slot' },
+  { id:26, name:'クロロえげつないレンジャーSUPERトリプルＳ',display:'クロロえげつないレンジャー SUPERトリプルＳ👑',genre:'slot' },
+  { id:27, name:'クロロえげつないレンジャーアニバーサリーＳ',display:'クロロえげつないレンジャー アニバーサリーＳ👑',genre:'slot'},
+  { id:28, name:'クロロマスクＳ',                         display:'クロロマスクＳ⚡',                                genre:'slot' },
+  { id:29, name:'クロロマスクＰＰ',                       display:'クロロマスクＰＰ👑',                              genre:'pachinko' },
+  { id:30, name:'クロロマスクＳＰ',                       display:'クロロマスクＳＰ⚡',                              genre:'both' },
+  { id:31, name:'クロロえげつない愛知決戦Ｓ【華】',       display:'クロロえげつない愛知決戦Ｓ【華】👑',              genre:'slot' },
+  { id:32, name:'クロロえげつない岐阜決戦Ｓ【華】',       display:'クロロえげつない岐阜決戦Ｓ【華】👑',              genre:'slot' },
+  { id:33, name:'クロロえげつない三重決戦Ｓ【華】',       display:'クロロえげつない三重決戦Ｓ【華】👑',              genre:'slot' },
+  { id:34, name:'スロッター✕スロッターALL STAR',          display:'スロッター✕スロッターALL STAR⚡️',                genre:'slot' },
+  { id:35, name:'スロッター特別分析レポート',              display:'スロッター特別分析レポート⚡',                    genre:'slot' },
+  { id:36, name:'超トレジャースロッター',                  display:'超トレジャースロッター⚡',                        genre:'slot' },
+  { id:37, name:'『超』クロロえげつないレンジャーSUPERトリプルＳ', display:'『超』クロロえげつないレンジャー SUPERトリプルＳ👑', genre:'slot' },
+];
+
+let campaigns = JSON.parse(localStorage.getItem('campaigns') || 'null') || DEFAULT_CAMPAIGNS;
+let todaySchedule = JSON.parse(localStorage.getItem('todaySchedule') || '[]');
+let machines = [];
+let selectedGenre = 'slot';
+let currentHallId = null;
+let nextId = Math.max(0, ...campaigns.map(c => c.id)) + 1;
+let excludeKeywords = JSON.parse(localStorage.getItem('excludeKeywords') || '[]');
+let otherRules = localStorage.getItem('otherRules') || '';
+const ANTHROPIC_API_KEY = localStorage.getItem('apiKey') || '';
+
+function save() {
+  localStorage.setItem('campaigns', JSON.stringify(campaigns));
+  localStorage.setItem('todaySchedule', JSON.stringify(todaySchedule));
+}
+
+// ========== 時刻 ==========
+function updateTime() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  const t = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  const badge = document.getElementById('timeBadge');
+  if (h >= 21) {
+    badge.className = 'time-badge time-night';
+    badge.textContent = '🌙 ' + t;
+  } else if (h >= 16) {
+    badge.className = 'time-badge time-evening';
+    badge.textContent = '🌆 ' + t;
+  } else {
+    badge.className = 'time-badge time-day';
+    badge.textContent = '☀️ ' + t;
+  }
+}
+
+function getTimeType() {
+  const h = new Date().getHours();
+  if (h >= 21) return 'night';
+  if (h >= 16) return 'evening';
+  return 'day';
+}
+
+// ========== パネル切替 ==========
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'progress') renderProgress();
+  if (name === 'master') { renderMasterList(); loadRules(); }
+}
+
+// ========== 人数変換 ==========
+function convertCount(n) {
+  if (!n || n <= 0) return null;
+  if (n > 440) return 500;
+  for (let i = CONVERSION_TABLE.length - 1; i >= 0; i--) {
+    if (n >= CONVERSION_TABLE[i][0]) return CONVERSION_TABLE[i][1];
+  }
+  return 10;
+}
+
+// ========== AI呼び出し ==========
+async function callAI(prompt) {
+  const key = localStorage.getItem('apiKey');
+  if (!key) {
+    const k = prompt.trim() ? window.prompt('Claude APIキーを入力してください（設定後は保存されます）:') : null;
+    if (!k) throw new Error('APIキーが設定されていません');
+    localStorage.setItem('apiKey', k);
+  }
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!res.ok) throw new Error('API Error: ' + res.status);
+  const data = await res.json();
+  return data.content[0].text;
+}
+
+// ========== スケジュール登録 ==========
+async function processSchedule() {
+  const raw = document.getElementById('scheduleInput').value.trim();
+  if (!raw) { alert('スケジュールを貼り付けてください'); return; }
+
+  document.getElementById('scheduleThinking').classList.add('show');
+
+  const campaignNames = campaigns.map(c => c.name).join('\n');
+  const keywords = excludeKeywords.join(', ');
+  const rules = otherRules;
+
+  const prompt = `あなたはパチンコホールの取材広告業務のアシスタントです。
+以下のスケジュールデータから、本業務（来店取材）に関係する行だけを抽出してください。
+
+【登録済み取材名一覧】
+${campaignNames}
+
+【除外キーワード】
+${keywords || 'なし'}
+
+【その他ルール】
+${rules || 'なし'}
+
+【スケジュールデータ】
+${raw}
+
+以下のJSON形式で返してください。他のテキストは一切不要です：
+[
+  {"campaign": "取材名（登録済み取材名に最も近いもの）", "hall": "ホール名", "matched_campaign_id": 取材マスターのIDまたはnull},
+  ...
+]
+
+登録済み取材名と完全一致しない場合も、最も近いものを推測してmatched_campaign_idを設定してください。
+判断できない場合はnullにしてください。`;
+
+  try {
+    const result = await callAI(prompt);
+    const json = JSON.parse(result.replace(/```json|```/g, '').trim());
+
+    const today = new Date();
+    const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+
+    todaySchedule = json.map((item, i) => ({
+      id: i + 1,
+      campaign: item.campaign,
+      hall: item.hall,
+      campaignId: item.matched_campaign_id,
+      posted: false,
+      dateStr
+    }));
+
+    save();
+    renderScheduleList();
+    document.getElementById('todayListCard').style.display = 'block';
+    alert(`✅ ${todaySchedule.length}件のスケジュールを登録しました`);
+  } catch(e) {
+    alert('エラー: ' + e.message);
+  } finally {
+    document.getElementById('scheduleThinking').classList.remove('show');
+  }
+}
+
+function renderScheduleList() {
+  const el = document.getElementById('scheduleList');
+  const done = todaySchedule.filter(s => s.posted).length;
+  const total = todaySchedule.length;
+  document.getElementById('doneCount').textContent = done;
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('progressBar').style.width = total ? (done/total*100)+'%' : '0%';
+
+  if (!todaySchedule.length) {
+    el.innerHTML = '<p style="color:#888;font-size:13px;text-align:center;padding:16px">スケジュールが登録されていません</p>';
+    return;
+  }
+
+  el.innerHTML = todaySchedule.map(s => {
+    const c = campaigns.find(c => c.id === s.campaignId);
+    return `<div class="schedule-item ${s.posted ? 'posted' : ''}">
+      <div class="si-status ${s.posted ? 'done' : ''}"></div>
+      <div class="si-info">
+        <div class="si-name">${s.hall}</div>
+        <div class="si-campaign">${c ? c.display : s.campaign}</div>
+      </div>
+      ${!s.posted ? `<button class="btn btn-secondary btn-small" onclick="loadScheduleItem(${s.id})">選択</button>` : '<span style="font-size:11px;color:#4caf50">✅済</span>'}
+    </div>`;
+  }).join('');
+}
+
+function loadScheduleItem(id) {
+  const item = todaySchedule.find(s => s.id === id);
+  if (!item) return;
+  currentHallId = id;
+  document.getElementById('lineInput').value = `ホール名: ${item.hall}\n企画名: ${item.campaign}\n`;
+  switchPanel('post');
+}
+
+// ========== 報告解析・ポスト生成 ==========
+async function parseAndGenerate() {
+  const lineText = document.getElementById('lineInput').value.trim();
+  if (!lineText) { alert('LINEの報告を貼り付けてください'); return; }
+
+  document.getElementById('postThinking').classList.add('show');
+  document.getElementById('errorSection').style.display = 'none';
+  document.getElementById('warningSection').style.display = 'none';
+  document.getElementById('resultSection').style.display = 'none';
+
+  const scheduleInfo = todaySchedule.map(s => `${s.hall} / ${s.campaign}`).join('\n') || 'スケジュール未登録';
+  const today = new Date();
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+
+  const prompt = `あなたはパチンコホールの取材広告業務のアシスタントです。
+以下のLINE報告文を解析してください。
+
+【当日スケジュール】
+${scheduleInfo}
+
+【LINE報告文】
+${lineText}
+
+以下の項目を抽出し、エラーチェックも行ってください。
+JSONのみ返してください：
+{
+  "hall": "ホール名（当日スケジュールから最も近いものを特定。略称でも推測してください）",
+  "matched_schedule_id": スケジュールのID番号またはnull,
+  "slot_count": スロット遊技人数の実数またはnull,
+  "pachinko_count": パチンコ遊技人数の実数またはnull,
+  "machines": ["高稼働機種1", "機種2", ...],
+  "errors": [
+    "エラー内容（例：スロット遊技人数1560名は桁ミスの可能性があります）"
+  ],
+  "warnings": [
+    "警告内容（例：当日スケジュールにないホールです）"
+  ]
+}
+
+エラーチェック項目：
+- 遊技人数が異常に多い（500名超）→桁ミスの疑い
+- 当日スケジュールにないホール
+- ホール名が空または不明
+- 同じホールからすでに報告がある場合`;
+
+  try {
+    const result = await callAI(prompt);
+    const data = JSON.parse(result.replace(/```json|```/g, '').trim());
+
+    // エラー表示
+    if (data.errors && data.errors.length > 0) {
+      const errEl = document.getElementById('errorSection');
+      errEl.style.display = 'block';
+      errEl.innerHTML = data.errors.map(e =>
+        `<div class="error-box"><div class="error-title">⚠️ エラー</div>${e}</div>`
+      ).join('');
+    }
+
+    if (data.warnings && data.warnings.length > 0) {
+      const warnEl = document.getElementById('warningSection');
+      warnEl.style.display = 'block';
+      warnEl.innerHTML = data.warnings.map(w =>
+        `<div class="warning-box">⚡ ${w}</div>`
+      ).join('');
+    }
+
+    // スケジュールから取材情報取得
+    let scheduleItem = data.matched_schedule_id
+      ? todaySchedule.find(s => s.id === data.matched_schedule_id)
+      : todaySchedule.find(s => s.hall.includes(data.hall) || data.hall.includes(s.hall));
+
+    currentHallId = scheduleItem ? scheduleItem.id : null;
+
+    const campaign = scheduleItem
+      ? campaigns.find(c => c.id === scheduleItem.campaignId)
+      : null;
+
+    // 機種セット
+    machines = (data.machines || []).slice(0, 5);
+    renderMachineTags();
+
+    // 人数セット
+    if (data.slot_count) document.getElementById('editSlot').value = data.slot_count;
+    if (data.pachinko_count) document.getElementById('editPachinko').value = data.pachinko_count;
+    recalcCount();
+
+    // ポスト生成
+    generatePostText(data.hall, campaign, scheduleItem, data.slot_count, data.pachinko_count);
+
+  } catch(e) {
+    alert('解析エラー: ' + e.message);
+  } finally {
+    document.getElementById('postThinking').classList.remove('show');
+  }
+}
+
+function generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActual) {
+  const today = new Date();
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+  const timeType = getTimeType();
+  const isNight = timeType === 'night' || timeType === 'evening';
+
+  const slotPublic = convertCount(slotActual);
+  const pachinkoPublic = convertCount(pachinkoActual);
+  const machinesText = getMachinesText();
+
+  const genre = campaign ? campaign.genre : 'slot';
+  const displayName = campaign ? campaign.display : (scheduleItem ? scheduleItem.campaign : '');
+
+  let counterLine = '';
+  if (genre === 'slot' || (!pachinkoActual && slotActual)) {
+    counterLine = isNight
+      ? `スロットコーナーのピーク時稼働約${slotPublic || '??'}名`
+      : `スロットコーナーの稼働約${slotPublic || '??'}名`;
+  } else if (genre === 'pachinko') {
+    counterLine = isNight
+      ? `パチンココーナーのピーク時稼働約${pachinkoPublic || '??'}名`
+      : `パチンココーナーの稼働約${pachinkoPublic || '??'}名`;
+  } else {
+    const parts = [];
+    if (slotPublic) parts.push(isNight ? `スロットコーナーのピーク時稼働約${slotPublic}名` : `スロットコーナーの稼働約${slotPublic}名`);
+    if (pachinkoPublic) parts.push(isNight ? `パチンココーナーのピーク時稼働約${pachinkoPublic}名` : `パチンココーナーの稼働約${pachinkoPublic}名`);
+    counterLine = parts.join('\n');
+  }
+
+  let post = `${dateStr} ${displayName} ${hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
+  if (machinesText) post += `\n\n📝高稼働機種\n・${machinesText}`;
+
+  if (isNight) {
+    post += `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`;
+  } else {
+    post += `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
+  }
+
+  document.getElementById('resultBox').textContent = post;
+  document.getElementById('resultSection').style.display = 'block';
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function regenPost() {
+  const slotActual = parseInt(document.getElementById('editSlot').value) || null;
+  const pachinkoActual = parseInt(document.getElementById('editPachinko').value) || null;
+  const scheduleItem = currentHallId ? todaySchedule.find(s => s.id === currentHallId) : null;
+  const campaign = scheduleItem ? campaigns.find(c => c.id === scheduleItem.campaignId) : null;
+  const hall = scheduleItem ? scheduleItem.hall : '';
+  generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActual);
+}
+
+function recalcCount() {
+  const s = parseInt(document.getElementById('editSlot').value);
+  const p = parseInt(document.getElementById('editPachinko').value);
+  document.getElementById('slotPublicEdit').textContent = s > 0 ? convertCount(s) + '名' : '—';
+  document.getElementById('pachinkoPublicEdit').textContent = p > 0 ? convertCount(p) + '名' : '—';
+}
+
+// ========== 機種タグ ==========
+function addMachineOnEnter(e) { if (e.key === 'Enter') { e.preventDefault(); addMachine(); } }
+function addMachine() {
+  const input = document.getElementById('machineInput');
+  const name = input.value.trim();
+  if (!name || machines.length >= 5) return;
+  machines.push(name);
+  input.value = '';
+  renderMachineTags();
+}
+function removeMachine(i) { machines.splice(i, 1); renderMachineTags(); }
+function renderMachineTags() {
+  const container = document.getElementById('machineTagsContainer');
+  container.innerHTML = machines.map((m, i) =>
+    `<span class="machine-tag">${m}<button onclick="removeMachine(${i})">×</button></span>`
+  ).join('');
+  const len = machines.join('').length + Math.max(0, machines.length - 1);
+  const el = document.getElementById('machineCharCount');
+  el.textContent = `${len} / 40文字`;
+  el.className = 'char-count' + (len > 40 ? ' over' : '');
+}
+function getMachinesText() {
+  if (!machines.length) return null;
+  let result = [], total = 0;
+  for (const m of machines) {
+    const add = m.length + (result.length > 0 ? 1 : 0);
+    if (total + add > 40) break;
+    result.push(m);
+    total += add;
+  }
+  return result.join('\n・');
+}
+
+// ========== コピー・完了 ==========
+function copyPost() {
+  navigator.clipboard.writeText(document.getElementById('resultBox').textContent).then(() => {
+    const el = document.getElementById('copySuccess');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 2000);
+  });
+}
+
+function markAsDone() {
+  if (!currentHallId) return;
+  const item = todaySchedule.find(s => s.id === currentHallId);
+  if (item) { item.posted = true; save(); }
+  document.getElementById('markDoneBtn').textContent = '✅ 実施済みにしました';
+  document.getElementById('markDoneBtn').disabled = true;
+  renderScheduleList();
+}
+
+// ========== 進捗 ==========
+function renderProgress() {
+  const done = todaySchedule.filter(s => s.posted);
+  const pending = todaySchedule.filter(s => !s.posted);
+  const total = todaySchedule.length;
+
+  document.getElementById('doneCount2').textContent = done.length;
+  document.getElementById('pendingCount').textContent = pending.length;
+  document.getElementById('totalCount2').textContent = total;
+  document.getElementById('progressBar2').style.width = total ? (done.length/total*100)+'%' : '0%';
+
+  const renderItem = (s) => {
+    const c = campaigns.find(c => c.id === s.campaignId);
+    return `<div class="schedule-item">
+      <div class="si-status ${s.posted ? 'done' : ''}"></div>
+      <div class="si-info">
+        <div class="si-name">${s.hall}</div>
+        <div class="si-campaign">${c ? c.display : s.campaign}</div>
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('pendingList').innerHTML = pending.length
+    ? pending.map(renderItem).join('')
+    : '<p style="color:#888;font-size:13px;text-align:center;padding:12px">未実施なし ✅</p>';
+
+  document.getElementById('doneList').innerHTML = done.length
+    ? done.map(renderItem).join('')
+    : '<p style="color:#888;font-size:13px;text-align:center;padding:12px">まだ実施済みがありません</p>';
+}
+
+// ========== マスタ ==========
+function selectGenre(g) {
+  selectedGenre = g;
+  ['slot','pachinko','both'].forEach(x =>
+    document.getElementById('genre-'+x).classList.toggle('active', x === g)
+  );
+}
+
+function addCampaign() {
+  const name = document.getElementById('newName').value.trim();
+  const display = document.getElementById('newDisplay').value.trim() || name;
+  if (!name) { alert('取材名を入力してください'); return; }
+  campaigns.push({ id: nextId++, name, display, genre: selectedGenre });
+  save();
+  renderMasterList();
+  document.getElementById('newName').value = '';
+  document.getElementById('newDisplay').value = '';
+  const s = document.getElementById('addSuccess');
+  s.style.display = 'block';
+  setTimeout(() => s.style.display = 'none', 2000);
+}
+
+function deleteCampaign(id) {
+  if (!confirm('削除しますか？')) return;
+  campaigns = campaigns.filter(c => c.id !== id);
+  save();
+  renderMasterList();
+}
+
+function renderMasterList() {
+  const el = document.getElementById('masterList');
+  const genreLabel = { slot:'🎰 スロット', pachinko:'🎯 パチンコ', both:'🎮 両方' };
+  el.innerHTML = campaigns.map(c => `
+    <div class="master-item">
+      <div class="mi-info">
+        <div class="mi-name">${c.name}</div>
+        <div class="mi-display">${c.display}</div>
+      </div>
+      <span class="mi-genre">${genreLabel[c.genre]}</span>
+      <button class="btn btn-danger btn-small" onclick="deleteCampaign(${c.id})">削除</button>
+    </div>
+  `).join('');
+}
+
+// ========== ルール ==========
+function loadRules() {
+  document.getElementById('excludeKeywords').value = excludeKeywords.join('\n');
+  document.getElementById('otherRules').value = otherRules;
+}
+
+function saveRules() {
+  excludeKeywords = document.getElementById('excludeKeywords').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  otherRules = document.getElementById('otherRules').value.trim();
+  localStorage.setItem('excludeKeywords', JSON.stringify(excludeKeywords));
+  localStorage.setItem('otherRules', otherRules);
+  const el = document.getElementById('rulesSuccess');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2000);
+}
+
+// ========== 初期化 ==========
+function init() {
+  updateTime();
+  setInterval(updateTime, 30000);
+  if (todaySchedule.length) {
+    renderScheduleList();
+    document.getElementById('todayListCard').style.display = 'block';
+  }
+  // APIキー確認
+  if (!localStorage.getItem('apiKey')) {
+    const key = window.prompt('Claude APIキーを入力してください（初回のみ）:\n\nhttps://console.anthropic.com/ で取得できます');
+    if (key) localStorage.setItem('apiKey', key.trim());
+  }
+}
+
+init();
+</script>
+</body>
+</html>
