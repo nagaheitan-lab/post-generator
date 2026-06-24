@@ -480,6 +480,15 @@ select option { background: #1a1a2e; }
     <div class="success-msg" id="gasSuccess">✅ 保存しました</div>
   </div>
 
+  <div class="card">
+    <div class="card-title">🔑 Claude APIキー設定</div>
+    <p class="section-note">Anthropic ConsoleでAPIキーを取得して入力してください。</p>
+    <label>APIキー</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="font-size:11px">
+    <button class="btn btn-primary" onclick="saveApiKey()" style="margin-top:8px">💾 APIキーを保存</button>
+    <div class="success-msg" id="apiKeySuccess">✅ 保存しました</div>
+  </div>
+
 
   <div class="card">
     <div class="card-title">⚙️ 間引きルール</div>
@@ -742,6 +751,16 @@ const ANTHROPIC_API_KEY = localStorage.getItem('apiKey') || '';
 
 // ========== クラウド同期 ==========
 const GAS_URL = localStorage.getItem('gasUrl') || '';
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { alert('APIキーを入力してください'); return; }
+  localStorage.setItem('apiKey', key);
+  document.getElementById('apiKeyInput').value = '********（保存済み）';
+  const el = document.getElementById('apiKeySuccess');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2000);
+}
 
 function saveGasUrl() {
   const url = document.getElementById('gasUrlInput').value.trim();
@@ -1847,6 +1866,12 @@ async function init() {
   const savedUrl = localStorage.getItem('gasUrl') || '';
   const gasInput = document.getElementById('gasUrlInput');
   if (gasInput) gasInput.value = savedUrl;
+
+  // APIキーが設定済みの場合はマスク表示
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  if (apiKeyInput && localStorage.getItem('apiKey')) {
+    apiKeyInput.value = '********（保存済み）';
+  }
 
   // クラウドから読み込み（GAS URLが設定されている場合）
   if (savedUrl) {
