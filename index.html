@@ -980,33 +980,38 @@ async function processSchedule(appendMode) {
 ${staffRaw}
 ` : '';
 
+  // ===== コード側で「無」行・景品系を事前除外 =====
+  const filteredLines = raw.split('\n').filter(line => {
+    const cols = line.split('\t');
+    if (cols.length < 2) return false;
+    const last = cols[cols.length - 1].trim();
+    const campaign = cols[0].trim();
+    // 最終列が「無」なら除外
+    if (last === '無') return false;
+    // 景品系取材を除外
+    if (campaign.includes('景品入荷') || campaign.includes('クロロ景品')) return false;
+    // 除外キーワードチェック
+    if (excludeKeywords.some(kw => kw && (campaign.includes(kw) || (cols[1] && cols[1].includes(kw))))) return false;
+    return true;
+  }).join('\n');
+
   const prompt = `あなたはパチンコホールの取材広告業務のアシスタントです。
 以下のスケジュールデータを解析してください。
 
 【列の構成】
 A列: 取材名、B列: ホール名、C列以降: 都道府県・担当者・URLなど管理情報
-最終列: 「有」「代」「九」などは業務対象。「無」は間引き対象（除外）。
-
-【重要ルール】
-- 最終列が「無」の行は必ず除外してください
-- 最終列が「有」「代」「九」その他の行は業務対象として含めてください
-- 「景品入荷」「クロロ景品」などの景品系取材は通常除外してください
 ${staffSection}
-【除外キーワード】
-${keywords || 'なし'}
-
 【その他ルール】
 ${rules || 'なし'}
 
 【当日スケジュールデータ】
-${raw}
+${filteredLines}
 
 以下のJSON形式のみ返してください。他のテキストは一切不要です：
 [
   {"campaign": "A列の取材名をそのまま正確に", "hall": "B列のホール名をそのまま正確に"},
   ...
-]
-除外対象の行は含めないでください。`;
+]`;
 
   try {
     const result = await callAI(prompt);
