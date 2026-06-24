@@ -470,6 +470,16 @@ select option { background: #1a1a2e; }
     <div class="card-title">📋 登録済み取材一覧</div>
     <div id="masterList"></div>
   </div>
+  <div class="card">
+    <div class="card-title">☁️ クラウド同期設定</div>
+    <p class="section-note">Google Apps ScriptのURLを設定すると、スケジュールや進捗が端末間で同期されます。</p>
+    <label>GAS デプロイURL</label>
+    <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:11px">
+    <button class="btn btn-primary" onclick="saveGasUrl()" style="margin-top:8px">💾 URLを保存</button>
+    <div id="gasStatus" style="font-size:12px;margin-top:8px;color:#aaa"></div>
+    <div class="success-msg" id="gasSuccess">✅ 保存しました</div>
+  </div>
+
 
   <div class="card">
     <div class="card-title">⚙️ 間引きルール</div>
@@ -730,9 +740,83 @@ let excludeKeywords = JSON.parse(localStorage.getItem('excludeKeywords') || '[]'
 let otherRules = localStorage.getItem('otherRules') || '';
 const ANTHROPIC_API_KEY = localStorage.getItem('apiKey') || '';
 
+// ========== クラウド同期 ==========
+const GAS_URL = localStorage.getItem('gasUrl') || '';
+
+function saveGasUrl() {
+  const url = document.getElementById('gasUrlInput').value.trim();
+  localStorage.setItem('gasUrl', url);
+  const el = document.getElementById('gasSuccess');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2000);
+  if (url) syncToCloud();
+}
+
+let syncTimer = null;
+function scheduleSyncToCloud() {
+  if (!localStorage.getItem('gasUrl')) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToCloud, 1500);
+}
+
+async function syncToCloud() {
+  const url = localStorage.getItem('gasUrl');
+  if (!url) return;
+  const statusEl = document.getElementById('gasStatus');
+  try {
+    const payload = {
+      action: 'save',
+      todaySchedule: JSON.stringify(todaySchedule),
+      nagaseEntries: JSON.stringify(nagaseEntries),
+      excludeKeywords: JSON.stringify(excludeKeywords),
+      otherRules: otherRules
+    };
+    await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (statusEl) statusEl.textContent = '☁️ 同期完了: ' + new Date().toLocaleTimeString('ja-JP');
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠️ 同期エラー: ' + e.message;
+  }
+}
+
+async function loadFromCloud() {
+  const url = localStorage.getItem('gasUrl');
+  if (!url) return false;
+  const statusEl = document.getElementById('gasStatus');
+  try {
+    if (statusEl) statusEl.textContent = '☁️ 読み込み中...';
+    const res = await fetch(url + '?action=load');
+    const data = await res.json();
+    if (data.todaySchedule) {
+      todaySchedule = JSON.parse(data.todaySchedule);
+      localStorage.setItem('todaySchedule', data.todaySchedule);
+    }
+    if (data.nagaseEntries) {
+      nagaseEntries = JSON.parse(data.nagaseEntries);
+      localStorage.setItem('nagaseEntries', data.nagaseEntries);
+    }
+    if (data.excludeKeywords) {
+      excludeKeywords = JSON.parse(data.excludeKeywords);
+      localStorage.setItem('excludeKeywords', data.excludeKeywords);
+    }
+    if (data.otherRules !== undefined) {
+      otherRules = data.otherRules;
+      localStorage.setItem('otherRules', data.otherRules);
+    }
+    if (statusEl) statusEl.textContent = '☁️ 読み込み完了: ' + new Date().toLocaleTimeString('ja-JP');
+    return true;
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '⚠️ 読み込みエラー: ' + e.message;
+    return false;
+  }
+}
+
 function save() {
   localStorage.setItem('campaigns', JSON.stringify(campaigns));
   localStorage.setItem('todaySchedule', JSON.stringify(todaySchedule));
+  scheduleSyncToCloud();
 }
 
 // ========== 時刻 ==========
@@ -1515,6 +1599,7 @@ function saveRules() {
   otherRules = document.getElementById('otherRules').value.trim();
   localStorage.setItem('excludeKeywords', JSON.stringify(excludeKeywords));
   localStorage.setItem('otherRules', otherRules);
+  scheduleSyncToCloud();
   const el = document.getElementById('rulesSuccess');
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 2000);
@@ -1526,6 +1611,7 @@ let nagaseEntries = JSON.parse(localStorage.getItem('nagaseEntries') || '[]');
 
 function saveNagase() {
   localStorage.setItem('nagaseEntries', JSON.stringify(nagaseEntries));
+  scheduleSyncToCloud();
 }
 
 // スケジュール登録時に長瀬エントリを構築（processScheduleから呼ぶ）
@@ -1753,9 +1839,26 @@ function nagaseMarkDone(id) {
 }
 
 // ========== 初期化 ==========
-function init() {
+async function init() {
   updateTime();
   setInterval(updateTime, 30000);
+
+  // GAS URL入力欄に保存済みURLをセット
+  const savedUrl = localStorage.getItem('gasUrl') || '';
+  const gasInput = document.getElementById('gasUrlInput');
+  if (gasInput) gasInput.value = savedUrl;
+
+  // クラウドから読み込み（GAS URLが設定されている場合）
+  if (savedUrl) {
+    const loaded = await loadFromCloud();
+    if (loaded) {
+      renderScheduleList();
+      if (todaySchedule.length) {
+        document.getElementById('todayListCard').style.display = 'block';
+      }
+    }
+  }
+
   if (todaySchedule.length) {
     renderScheduleList();
     document.getElementById('todayListCard').style.display = 'block';
