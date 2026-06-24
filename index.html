@@ -309,7 +309,7 @@ select option { background: #1a1a2e; }
     </div>
 
     <label style="margin-top:4px">② 各取材担当者表（ホール名・都道府県・企業名・担当者）</label>
-    <p class="section-note">「長瀬」担当のホールは残し、それ以外は除外します。未入力でもOKです。</p>
+    <p class="section-note">「長瀬」担当のホールを長瀬担当タブに表示するために使います。未入力でもOKです。</p>
     <div class="paste-area">
       <textarea id="staffInput" rows="5" placeholder="将軍盛岡店&#9;岩手&#9;プロテラス&#9;鳩岡&#10;ノア上永谷店&#9;神奈川&#9;withdog&#9;多田&#10;ウエスタン行徳店&#9;千葉&#9;ガーデン&#9;長瀬&#10;..."></textarea>
     </div>
@@ -1075,13 +1075,8 @@ async function processSchedule(appendMode) {
   const keywords = excludeKeywords.join(', ');
   const rules = otherRules;
 
-  const staffSection = staffRaw ? `
-【各取材担当者表】
-※ この表に載っているホールのうち、担当者列が「長瀬」の行は業務対象として残してください。
-※ 担当者列が「長瀬」以外の行は除外してください。
-※ この表に載っていないホールはそのまま対象として扱ってください。
-${staffRaw}
-` : '';
+  // 担当者表はAIには渡さず、コード側で長瀬タブ構築のみに使用
+  const staffSection = '';
 
   // ===== コード側で「無」行・景品系を事前除外 =====
   const filteredLines = raw.split('\n').filter(line => {
