@@ -1205,7 +1205,7 @@ function generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActu
     counterLine = parts.join('\n');
   }
 
-  let post = `${dateStr} ${displayName} ${hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
+  let post = `${dateStr} ${displayName}\n${hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
   if (machinesText) post += `\n\n📝高稼働機種\n・${machinesText}`;
 
   if (isNight) {
@@ -1720,7 +1720,7 @@ function nagaseGenPost(id) {
     counterLine = parts.join('\n');
   }
 
-  let post = `${dateStr} ${displayName} ${entry.hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
+  let post = `${dateStr} ${displayName}\n${entry.hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
   if (machinesText) post += `\n\n📝高稼働機種\n・${machinesText}`;
   if (isNight) {
     post += `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`;
