@@ -1061,7 +1061,7 @@ function findCampaignByName(name) {
   return partial || null;
 }
 
-async function processSchedule(appendMode) {
+function processSchedule(appendMode) {
   const raw = document.getElementById('scheduleInput').value.trim();
   const staffRaw = document.getElementById('staffInput').value.trim();
   if (!raw) { alert('当日スケジュールを貼り付けてください'); return; }
@@ -1070,78 +1070,78 @@ async function processSchedule(appendMode) {
     if (!confirm('現在のスケジュールをリセットして新規登録しますか？')) return;
   }
 
-  document.getElementById('scheduleThinking').classList.add('show');
+  // ===== AI不使用：コード側で直接パース =====
 
-  const keywords = excludeKeywords.join(', ');
-  const rules = otherRules;
-
-  // 担当者表はAIには渡さず、コード側で長瀬タブ構築のみに使用
-  const staffSection = '';
-
-  // ===== コード側で「無」行・景品系を事前除外 =====
-  const filteredLines = raw.split('\n').filter(line => {
-    const cols = line.split('\t');
-    if (cols.length < 2) return false;
-    const last = cols[cols.length - 1].trim();
-    const campaign = cols[0].trim();
-    // 最終列が「無」なら除外
-    if (last === '無') return false;
-    // 景品系取材を除外
-    if (campaign.includes('景品入荷') || campaign.includes('クロロ景品')) return false;
-    // 除外キーワードチェック
-    if (excludeKeywords.some(kw => kw && (campaign.includes(kw) || (cols[1] && cols[1].includes(kw))))) return false;
-    return true;
-  }).join('\n');
-
-  const prompt = `あなたはパチンコホールの取材広告業務のアシスタントです。
-以下のスケジュールデータを解析してください。
-
-【列の構成】
-A列: 取材名、B列: ホール名、C列以降: 都道府県・担当者・URLなど管理情報
-${staffSection}
-【その他ルール】
-${rules || 'なし'}
-
-【当日スケジュールデータ】
-${filteredLines}
-
-以下のJSON形式のみ返してください。他のテキストは一切不要です：
-[
-  {"campaign": "A列の取材名をそのまま正確に", "hall": "B列のホール名をそのまま正確に"},
-  ...
-]`;
-
-  try {
-    const result = await callAI(prompt);
-    const parsed = JSON.parse(result.replace(/```json|```/g, '').trim());
-
-    const today = new Date();
-    const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
-
-    // ローカル正規化マッチングでIDを付与
-    const json = parsed.map(item => {
-      const matched = findCampaignByName(item.campaign);
-      return {
-        campaign: item.campaign,
-        hall: item.hall,
-        matched_campaign_id: matched ? matched.id : null
-      };
+  // 担当者表から長瀬担当のホール名を抽出
+  const nagaseHalls = new Set();
+  const nonNagaseHalls = new Set();
+  if (staffRaw) {
+    staffRaw.split('\n').forEach(line => {
+      const cols = line.split('\t');
+      if (cols.length < 2) return;
+      const hall = cols[0].trim();
+      const staff = cols[cols.length - 1].trim();
+      if (staff.includes('長瀬')) {
+        nagaseHalls.add(hall);
+      } else {
+        nonNagaseHalls.add(hall);
+      }
     });
+  }
 
-    // マスタ未登録チェック
-    const unknownItems = json.filter(item => !item.matched_campaign_id);
-    if (unknownItems.length > 0) {
-      pendingScheduleData = { json, dateStr, appendMode, staffRaw };
-      showUnknownModal(unknownItems);
-      return;
+  // スケジュールデータをパース
+  const parsed = [];
+  raw.split('\n').forEach(line => {
+    const cols = line.split('\t');
+    if (cols.length < 2) return;
+    const campaign = cols[0].trim();
+    const hall = cols[1].trim();
+    if (!campaign || !hall) return;
+
+    // 最終列が「無」なら除外
+    const last = cols[cols.length - 1].trim();
+    if (last === '無') return;
+
+    // 景品系取材を除外
+    if (campaign.includes('景品入荷') || campaign.includes('クロロ景品')) return;
+
+    // 除外キーワードチェック
+    if (excludeKeywords.some(kw => kw && (campaign.includes(kw) || hall.includes(kw)))) return;
+
+    // 担当者表がある場合：長瀬以外の担当者のホールを除外
+    if (staffRaw && nonNagaseHalls.size > 0) {
+      // 担当者表に載っていて、かつ長瀬担当でないホールは除外
+      const isNonNagase = [...nonNagaseHalls].some(h =>
+        hall === h || hall.includes(h) || h.includes(hall)
+      );
+      if (isNonNagase) return;
     }
 
-    applyScheduleData(json, dateStr, appendMode, staffRaw);
-  } catch(e) {
-    alert('エラー: ' + e.message);
-  } finally {
-    document.getElementById('scheduleThinking').classList.remove('show');
+    parsed.push({ campaign, hall });
+  });
+
+  const today = new Date();
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+
+  // マスタ照合
+  const json = parsed.map(item => {
+    const matched = findCampaignByName(item.campaign);
+    return {
+      campaign: item.campaign,
+      hall: item.hall,
+      matched_campaign_id: matched ? matched.id : null
+    };
+  });
+
+  // マスタ未登録チェック
+  const unknownItems = json.filter(item => !item.matched_campaign_id);
+  if (unknownItems.length > 0) {
+    pendingScheduleData = { json, dateStr, appendMode, staffRaw };
+    showUnknownModal(unknownItems);
+    return;
   }
+
+  applyScheduleData(json, dateStr, appendMode, staffRaw);
 }
 
 function renderScheduleList() {
