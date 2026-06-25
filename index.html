@@ -1278,7 +1278,8 @@ function generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActu
   const today = new Date();
   const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
   const timeType = getTimeType();
-  const isNight = timeType === 'night' || timeType === 'evening';
+  // 夜テンプレは21時以降（night）のみ。夕方（evening/16〜21時）は通常テンプレと同じ。
+  const isNight = timeType === 'night';
 
   const slotPublic = convertCount(slotActual);
   const pachinkoPublic = convertCount(pachinkoActual);
@@ -1799,7 +1800,8 @@ function nagaseGenPost(id) {
   const today = new Date();
   const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
   const timeType = getTimeType();
-  const isNight = timeType === 'night' || timeType === 'evening';
+  // 夜テンプレは21時以降（night）のみ。夕方（evening/16〜21時）は通常テンプレと同じ。
+  const isNight = timeType === 'night';
   const slotPub = convertCount(entry.slotCount);
   const pachPub = convertCount(entry.pachinkoCount);
   const machinesText = nagaseGetMachinesText(entry.machines || []);
