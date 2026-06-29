@@ -476,6 +476,7 @@ select option { background: #1a1a2e; }
     <label>GAS デプロイURL</label>
     <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:11px">
     <button class="btn btn-primary" onclick="saveGasUrl()" style="margin-top:8px">💾 URLを保存</button>
+    <button class="btn btn-secondary" onclick="reloadFromCloud()" style="margin-top:8px">☁️ クラウドから今すぐ読み込む</button>
     <div id="gasStatus" style="font-size:12px;margin-top:8px;color:#aaa"></div>
     <div class="success-msg" id="gasSuccess">✅ 保存しました</div>
   </div>
@@ -806,7 +807,8 @@ async function loadFromCloud() {
   const statusEl = document.getElementById('gasStatus');
   try {
     if (statusEl) statusEl.textContent = '☁️ 読み込み中...';
-    const res = await fetch(url + '?action=load');
+    // キャッシュ無効化（特にiOS Safariで古いデータが表示されるのを防ぐ）
+    const res = await fetch(url + '?action=load&_=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
     if (data.todaySchedule) {
       todaySchedule = JSON.parse(data.todaySchedule);
@@ -836,6 +838,27 @@ function save() {
   localStorage.setItem('campaigns', JSON.stringify(campaigns));
   localStorage.setItem('todaySchedule', JSON.stringify(todaySchedule));
   scheduleSyncToCloud();
+}
+
+// クラウドから読み込み直して画面も更新する（手動ボタン・復帰時に使用）
+let isReloading = false;
+async function reloadFromCloud() {
+  if (!localStorage.getItem('gasUrl') || isReloading) return;
+  isReloading = true;
+  try {
+    const loaded = await loadFromCloud();
+    if (loaded) {
+      renderScheduleList();
+      const card = document.getElementById('todayListCard');
+      if (card) card.style.display = todaySchedule.length ? 'block' : card.style.display;
+      // 表示中のパネルを再描画
+      if (document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
+      if (document.getElementById('panel-nagase')?.classList.contains('active')) renderNagaseList();
+      if (document.getElementById('panel-master')?.classList.contains('active')) renderMasterList();
+    }
+  } finally {
+    isReloading = false;
+  }
 }
 
 // ========== 時刻 ==========
@@ -1939,6 +1962,12 @@ async function init() {
     const key = window.prompt('Claude APIキーを入力してください（初回のみ）:\n\nhttps://console.anthropic.com/ で取得できます');
     if (key) localStorage.setItem('apiKey', key.trim());
   }
+
+  // アプリを前面に戻したときにクラウドから読み直す（スマホでの「開いても古い」対策）
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reloadFromCloud();
+  });
+  window.addEventListener('focus', reloadFromCloud);
 }
 
 init();
