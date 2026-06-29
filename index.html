@@ -1050,6 +1050,18 @@ function normalizeName(s) {
   return s.normalize('NFKC').replace(/\s/g, '').replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, '-').toLowerCase();
 }
 
+// ホール名照合用の正規化（全角半角・スペース・各種ハイフン・各種アポストロフィ/引用符を吸収）
+// 例: D'station（U+2019）と D'station（U+0027）を同一視する
+function normalizeHall(s) {
+  return (s || '')
+    .normalize('NFKC')
+    .replace(/\s/g, '')
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\uFF0D]/g, '-')          // 各種ハイフン/ダッシュ→-
+    .replace(/[\u0027\u2018\u2019\u0060\u00B4\u02B9\u02BB\u02BC\u2032\uFF07]/g, '') // アポストロフィ類を除去
+    .replace(/[\u0022\u201C\u201D\u2033\uFF02]/g, '')                              // ダブルクォート類を除去
+    .toLowerCase();
+}
+
 function findCampaignByName(name) {
   const normInput = normalizeName(name);
   const exact = campaigns.find(c => normalizeName(c.name) === normInput);
@@ -1110,10 +1122,12 @@ function processSchedule(appendMode) {
 
     // 担当者表がある場合：長瀬以外の担当者のホールを除外
     if (staffRaw && nonNagaseHalls.size > 0) {
-      // 担当者表に載っていて、かつ長瀬担当でないホールは除外
-      const isNonNagase = [...nonNagaseHalls].some(h =>
-        hall === h || hall.includes(h) || h.includes(hall)
-      );
+      // 担当者表に載っていて、かつ長瀬担当でないホールは除外（正規化して照合）
+      const nh = normalizeHall(hall);
+      const isNonNagase = [...nonNagaseHalls].some(h => {
+        const nhStaff = normalizeHall(h);
+        return nh === nhStaff || nh.includes(nhStaff) || nhStaff.includes(nh);
+      });
       if (isNonNagase) return;
     }
 
@@ -1221,7 +1235,13 @@ JSONのみ返してください：
 - 遊技人数が異常に多い（500名超）→桁ミスの疑い
 - 当日スケジュールにないホール
 - ホール名が空または不明
-- 同じホールからすでに報告がある場合`;
+- 同じホールからすでに報告がある場合
+
+【重要・除外ルール】
+- 報告文に「抽選人数」「一般入場人数」が含まれていても、それらは完全に無視してください。
+- 「抽選人数」「一般入場人数」の合計が「遊技人口（遊技人数）」と一致するかどうかのチェックは一切行わないでください。
+- これらの不一致をエラーや警告として絶対に報告しないでください（errors・warningsに含めないこと）。
+- 使用するのはスロット遊技人数・パチンコ遊技人数のみです。`;
 
   try {
     const result = await callAI(prompt);
@@ -1380,9 +1400,33 @@ function markAsDone() {
   if (!currentHallId) return;
   const item = todaySchedule.find(s => s.id === currentHallId);
   if (item) { item.posted = true; item.allDone = true; save(); }
-  document.getElementById('markDoneBtn').textContent = '✅ 実施済みにしました';
-  document.getElementById('markDoneBtn').disabled = true;
   renderScheduleList();
+  clearPostTab();
+}
+
+// 報告入力欄・生成ポスト・エラー・編集内容をすべてクリア
+function clearPostTab() {
+  // 報告貼り付け欄
+  document.getElementById('lineInput').value = '';
+  // 生成ポスト・エラー・警告セクションを非表示＆中身クリア
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('resultBox').textContent = '';
+  const errEl = document.getElementById('errorSection');
+  errEl.style.display = 'none'; errEl.innerHTML = '';
+  const warnEl = document.getElementById('warningSection');
+  warnEl.style.display = 'none'; warnEl.innerHTML = '';
+  // 手動編集（人数・機種）をリセット
+  document.getElementById('editSlot').value = '';
+  document.getElementById('editPachinko').value = '';
+  machines = [];
+  renderMachineTags();
+  recalcCount();
+  // ポスト済みボタンを次回用に元に戻す
+  const btn = document.getElementById('markDoneBtn');
+  btn.textContent = '✅ ポスト済みにする';
+  btn.disabled = false;
+  // 選択中ホールを解除
+  currentHallId = null;
 }
 
 // ========== 進捗 ==========
@@ -1642,10 +1686,12 @@ function buildNagaseEntries(staffRaw) {
   nagaseEntries = nagaseLines.map((line, i) => {
     const cols = line.split('\t');
     const hall = cols[0] || '';
-    // 当日スケジュールと照合
-    const matched = todaySchedule.filter(s =>
-      s.hall === hall || s.hall.includes(hall) || hall.includes(s.hall)
-    );
+    // 当日スケジュールと照合（正規化して照合）
+    const nh = normalizeHall(hall);
+    const matched = todaySchedule.filter(s => {
+      const ns = normalizeHall(s.hall);
+      return ns === nh || ns.includes(nh) || nh.includes(ns);
+    });
     if (matched.length > 0) {
       return matched.map(s => ({
         id: `nagase_${i}_${s.id}`,
