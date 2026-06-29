@@ -1370,21 +1370,26 @@ function renderMachineTags() {
   container.innerHTML = machines.map((m, i) =>
     `<span class="machine-tag">${m}<button onclick="removeMachine(${i})">×</button></span>`
   ).join('');
-  const len = machines.join('').length + Math.max(0, machines.length - 1);
+  const len = machineBlockLen(machines);
   const el = document.getElementById('machineCharCount');
   el.textContent = `${len} / 40文字`;
   el.className = 'char-count' + (len > 40 ? ' over' : '');
 }
 function getMachinesText() {
   if (!machines.length) return null;
-  let result = [], total = 0;
+  const result = [];
   for (const m of machines) {
-    const add = m.length + (result.length > 0 ? 1 : 0);
-    if (total + add > 40) break;
+    // 実際に投稿へ出るブロック（先頭・ + 改行・区切り）が40文字を超えたら打ち切り
+    if (machineBlockLen(result.concat([m])) > 40) break;
     result.push(m);
-    total += add;
   }
-  return result.join('\n・');
+  return result.length ? result.join('\n・') : null;
+}
+
+// 実際に投稿へ出る機種ブロック「・機種1\n・機種2…」の文字数（先頭の・と改行・中黒を含む）
+function machineBlockLen(list) {
+  if (!list || !list.length) return 0;
+  return ('・' + list.join('\n・')).length;
 }
 
 // ========== コピー・完了 ==========
@@ -1734,7 +1739,7 @@ function renderNagaseList() {
     const machineList = (entry.machines || []).map((m, i) =>
       `<span class="machine-tag">${m}<button onclick="nagaseRemoveMachine('${entry.id}',${i})">×</button></span>`
     ).join('');
-    const machLen = (entry.machines || []).join('').length + Math.max(0, (entry.machines||[]).length - 1);
+    const machLen = machineBlockLen(entry.machines || []);
 
     return `
     <div class="card" id="nagase-card-${entry.id}" style="${entry.posted ? 'opacity:0.5' : ''}">
@@ -1820,21 +1825,19 @@ function nagaseUpdateMachineTags(id, machines) {
   container.innerHTML = machines.map((m, i) =>
     `<span class="machine-tag">${m}<button onclick="nagaseRemoveMachine('${id}',${i})">×</button></span>`
   ).join('');
-  const len = machines.join('').length + Math.max(0, machines.length - 1);
+  const len = machineBlockLen(machines);
   const el = document.getElementById(`nagase-machine-count-${id}`);
   if (el) { el.textContent = `${len} / 40文字`; el.className = 'char-count' + (len > 40 ? ' over' : ''); }
 }
 
 function nagaseGetMachinesText(machines) {
   if (!machines || !machines.length) return null;
-  let result = [], total = 0;
+  const result = [];
   for (const m of machines) {
-    const add = m.length + (result.length > 0 ? 1 : 0);
-    if (total + add > 40) break;
+    if (machineBlockLen(result.concat([m])) > 40) break;
     result.push(m);
-    total += add;
   }
-  return result.join('\n・');
+  return result.length ? result.join('\n・') : null;
 }
 
 function nagaseGenPost(id) {
