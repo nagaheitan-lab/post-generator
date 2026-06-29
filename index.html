@@ -772,8 +772,55 @@ function saveGasUrl() {
   if (url) syncToCloud();
 }
 
+// データの「最終更新時刻」。新しい方を優先（newest-wins）するための基準。
+// ※ クラウドから取り込んだときは、その時刻を引き継ぐ（自分が編集したわけではないので）
+let dataUpdatedAt = parseInt(localStorage.getItem('dataUpdatedAt') || '0', 10);
+
+// ユーザーがデータを変更したときに呼ぶ（更新時刻を「今」に進める）
+function touchData() {
+  dataUpdatedAt = Date.now();
+  localStorage.setItem('dataUpdatedAt', String(dataUpdatedAt));
+}
+
+// クラウドから受け取ったデータをローカルへ反映する共通処理
+function applyCloudData(data) {
+  if (data.todaySchedule) {
+    todaySchedule = JSON.parse(data.todaySchedule);
+    localStorage.setItem('todaySchedule', data.todaySchedule);
+  }
+  if (data.nagaseEntries) {
+    nagaseEntries = JSON.parse(data.nagaseEntries);
+    localStorage.setItem('nagaseEntries', data.nagaseEntries);
+  }
+  if (data.excludeKeywords) {
+    excludeKeywords = JSON.parse(data.excludeKeywords);
+    localStorage.setItem('excludeKeywords', data.excludeKeywords);
+  }
+  if (data.otherRules !== undefined) {
+    otherRules = data.otherRules;
+    localStorage.setItem('otherRules', data.otherRules);
+  }
+  // クラウドの更新時刻を引き継ぐ
+  if (data.updatedAt !== undefined) {
+    dataUpdatedAt = parseInt(data.updatedAt || '0', 10);
+    localStorage.setItem('dataUpdatedAt', String(dataUpdatedAt));
+  }
+}
+
+// 表示中の画面を再描画する
+function renderActivePanels() {
+  renderScheduleList();
+  const card = document.getElementById('todayListCard');
+  if (card && todaySchedule.length) card.style.display = 'block';
+  if (document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
+  if (document.getElementById('panel-nagase')?.classList.contains('active')) renderNagaseList();
+  if (document.getElementById('panel-master')?.classList.contains('active')) renderMasterList();
+}
+
 let syncTimer = null;
 function scheduleSyncToCloud() {
+  // ここに来る＝ユーザーが何か編集した、なので更新時刻を進める
+  touchData();
   if (!localStorage.getItem('gasUrl')) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncToCloud, 1500);
@@ -784,8 +831,22 @@ async function syncToCloud() {
   if (!url) return;
   const statusEl = document.getElementById('gasStatus');
   try {
+    // 先にクラウドの更新時刻を確認。クラウドの方が新しければ、上書きせず取り込む。
+    try {
+      const r = await fetch(url + '?action=load&_=' + Date.now(), { cache: 'no-store' });
+      const cd = await r.json();
+      const cloudTs = parseInt(cd.updatedAt || '0', 10);
+      if (cloudTs > dataUpdatedAt) {
+        applyCloudData(cd);
+        renderActivePanels();
+        if (statusEl) statusEl.textContent = '☁️ クラウドが新しいため取り込みました: ' + new Date().toLocaleTimeString('ja-JP');
+        return;
+      }
+    } catch(_) { /* 確認に失敗した場合はそのまま保存を試みる */ }
+
     const payload = {
       action: 'save',
+      updatedAt: String(dataUpdatedAt),
       todaySchedule: JSON.stringify(todaySchedule),
       nagaseEntries: JSON.stringify(nagaseEntries),
       excludeKeywords: JSON.stringify(excludeKeywords),
@@ -810,23 +871,14 @@ async function loadFromCloud() {
     // キャッシュ無効化（特にiOS Safariで古いデータが表示されるのを防ぐ）
     const res = await fetch(url + '?action=load&_=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
-    if (data.todaySchedule) {
-      todaySchedule = JSON.parse(data.todaySchedule);
-      localStorage.setItem('todaySchedule', data.todaySchedule);
+    const cloudTs = parseInt(data.updatedAt || '0', 10);
+    // クラウドが自分と同じか新しいときだけ取り込む（自分の新しい編集を消さない）
+    if (cloudTs >= dataUpdatedAt) {
+      applyCloudData(data);
+      if (statusEl) statusEl.textContent = '☁️ 読み込み完了: ' + new Date().toLocaleTimeString('ja-JP');
+    } else {
+      if (statusEl) statusEl.textContent = '☁️ こちらが最新のため取り込みなし: ' + new Date().toLocaleTimeString('ja-JP');
     }
-    if (data.nagaseEntries) {
-      nagaseEntries = JSON.parse(data.nagaseEntries);
-      localStorage.setItem('nagaseEntries', data.nagaseEntries);
-    }
-    if (data.excludeKeywords) {
-      excludeKeywords = JSON.parse(data.excludeKeywords);
-      localStorage.setItem('excludeKeywords', data.excludeKeywords);
-    }
-    if (data.otherRules !== undefined) {
-      otherRules = data.otherRules;
-      localStorage.setItem('otherRules', data.otherRules);
-    }
-    if (statusEl) statusEl.textContent = '☁️ 読み込み完了: ' + new Date().toLocaleTimeString('ja-JP');
     return true;
   } catch(e) {
     if (statusEl) statusEl.textContent = '⚠️ 読み込みエラー: ' + e.message;
@@ -847,15 +899,7 @@ async function reloadFromCloud() {
   isReloading = true;
   try {
     const loaded = await loadFromCloud();
-    if (loaded) {
-      renderScheduleList();
-      const card = document.getElementById('todayListCard');
-      if (card) card.style.display = todaySchedule.length ? 'block' : card.style.display;
-      // 表示中のパネルを再描画
-      if (document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
-      if (document.getElementById('panel-nagase')?.classList.contains('active')) renderNagaseList();
-      if (document.getElementById('panel-master')?.classList.contains('active')) renderMasterList();
-    }
+    if (loaded) renderActivePanels();
   } finally {
     isReloading = false;
   }
