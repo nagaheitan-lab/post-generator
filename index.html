@@ -1269,7 +1269,7 @@ async function parseAndGenerate() {
   document.getElementById('warningSection').style.display = 'none';
   document.getElementById('resultSection').style.display = 'none';
 
-  const scheduleInfo = todaySchedule.map(s => `${s.hall} / ${s.campaign}`).join('\n') || 'スケジュール未登録';
+  const scheduleInfo = todaySchedule.map(s => `ID:${s.id} | ${s.hall} / ${s.campaign}`).join('\n') || 'スケジュール未登録';
   const today = new Date();
   const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
 
@@ -1286,7 +1286,8 @@ ${lineText}
 JSONのみ返してください：
 {
   "hall": "ホール名（当日スケジュールから最も近いものを特定。略称でも推測してください）",
-  "matched_schedule_id": スケジュールのID番号またはnull,
+  "campaign": "報告文の企画名（取材名）。分からなければnull",
+  "matched_schedule_id": 上記【当日スケジュール】に記載された「ID:」の番号（最も近いホールのもの）またはnull,
   "slot_count": スロット遊技人数の実数またはnull,
   "pachinko_count": パチンコ遊技人数の実数またはnull,
   "machines": ["高稼働機種1", "機種2", ...],
@@ -1332,9 +1333,46 @@ JSONのみ返してください：
     }
 
     // スケジュールから取材情報取得
-    let scheduleItem = data.matched_schedule_id
-      ? todaySchedule.find(s => s.id === data.matched_schedule_id)
-      : todaySchedule.find(s => s.hall.includes(data.hall) || data.hall.includes(s.hall));
+    // 重要: AIが返す matched_schedule_id だけに依存すると、AIがID番号を取り違えて
+    // 別の取材（campaign）を選んでしまう場合がある。そのため、まずホール名・企画名を
+    // コード側で照合して正しいスケジュール行を確定し、AIのIDは最後の保険として使う。
+    const reportHallNorm = normalizeHall(data.hall);
+    const reportCampNorm = data.campaign ? normalizeName(data.campaign) : '';
+
+    // ホール名で候補を抽出（完全一致 → 部分一致）
+    let hallMatches = [];
+    if (reportHallNorm) {
+      hallMatches = todaySchedule.filter(s => normalizeHall(s.hall) === reportHallNorm);
+      if (hallMatches.length === 0) {
+        hallMatches = todaySchedule.filter(s => {
+          const sh = normalizeHall(s.hall);
+          return sh.includes(reportHallNorm) || reportHallNorm.includes(sh);
+        });
+      }
+    }
+
+    let scheduleItem = null;
+    if (hallMatches.length === 1) {
+      scheduleItem = hallMatches[0];
+    } else if (hallMatches.length > 1) {
+      // 同一ホールに複数の取材がある場合は企画名で絞り込む
+      if (reportCampNorm) {
+        scheduleItem = hallMatches.find(s => {
+          const sc = normalizeName(s.campaign);
+          return sc === reportCampNorm || sc.includes(reportCampNorm) || reportCampNorm.includes(sc);
+        });
+      }
+      // 決まらなければ候補内でAIのIDを尊重、それでも無ければ先頭
+      if (!scheduleItem && data.matched_schedule_id) {
+        scheduleItem = hallMatches.find(s => s.id === data.matched_schedule_id);
+      }
+      if (!scheduleItem) scheduleItem = hallMatches[0];
+    }
+
+    // ホール名で全く見つからない場合のみ、AIのIDにフォールバック
+    if (!scheduleItem && data.matched_schedule_id) {
+      scheduleItem = todaySchedule.find(s => s.id === data.matched_schedule_id);
+    }
 
     currentHallId = scheduleItem ? scheduleItem.id : null;
 
@@ -1542,7 +1580,10 @@ function renderProgress() {
     unreportedEl.innerHTML = unreported.map(s =>
       makeItem(s, {
         style: 'border-color:#ff9800;background:#1a1500',
-        action: `<button class="btn btn-small" style="background:#ff9800;color:#000;font-size:11px" onclick="markAllDone(${s.id})">完了</button>`
+        action: `<div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-small" style="background:#e94560;color:#fff;font-size:11px" onclick="markMyPosted(${s.id})">✍️自分</button>
+          <button class="btn btn-small" style="background:#ff9800;color:#000;font-size:11px" onclick="markAllDone(${s.id})">完了</button>
+        </div>`
       })
     ).join('');
     copyBtn.style.display = 'block';
@@ -1568,6 +1609,14 @@ function renderProgress() {
 function markAllDone(id) {
   const item = todaySchedule.find(s => s.id === id);
   if (item) { item.allDone = true; save(); }
+  renderProgress();
+}
+
+// 自分ポスト済みマーク（手動）: AI生成を経ずに自分でポストした場合用。
+// posted は自分カウント、allDone は全体完了カウントに反映される。
+function markMyPosted(id) {
+  const item = todaySchedule.find(s => s.id === id);
+  if (item) { item.posted = true; item.allDone = true; save(); }
   renderProgress();
 }
 
