@@ -353,10 +353,7 @@ select option { background: #1a1a2e; }
   <div id="resultSection" style="display:none">
     <div class="card">
       <div class="card-title">📤 生成されたポスト文</div>
-      <div class="result-box" id="resultBox"></div>
-      <button class="btn btn-primary" onclick="copyPost()">📋 コピーする</button>
-      <div class="success-msg" id="copySuccess">✅ コピーしました！</div>
-      <button class="btn btn-success" id="markDoneBtn" onclick="markAsDone()">✅ ポスト済みにする</button>
+      <div id="postsContainer"></div>
     </div>
 
     <div class="card">
@@ -378,13 +375,13 @@ select option { background: #1a1a2e; }
       <div class="info-row"><span>パチンコ公表</span><span class="highlight" id="pachinkoPublicEdit">—</span></div>
       <hr class="divider">
 
-      <label>高稼働機種（最大5機種・合計40文字）</label>
+      <label>高稼働機種（最大5機種／投稿全体の文字数に収まる分だけ自動採用）</label>
       <div style="display:flex;gap:8px;margin-bottom:6px">
         <input type="text" id="machineInput" placeholder="機種名を入力してEnter" onkeydown="addMachineOnEnter(event)" style="margin:0;flex:1">
         <button class="btn btn-secondary btn-small" onclick="addMachine()">追加</button>
       </div>
       <div id="machineTagsContainer" style="margin-bottom:6px;min-height:28px"></div>
-      <div class="char-count" id="machineCharCount">0 / 40文字</div>
+      <div class="char-count" id="machineCharCount">0 / 5機種（文字数に応じて自動調整）</div>
 
       <button class="btn btn-secondary" onclick="regenPost()">🔄 ポスト文を再生成</button>
     </div>
@@ -745,6 +742,53 @@ let todaySchedule = JSON.parse(localStorage.getItem('todaySchedule') || '[]');
 let machines = [];
 let selectedGenre = 'slot';
 let currentHallId = null;
+let currentTargets = [];   // 生成中ポストの対象スケジュール（同一ホール複数取材に対応）
+let currentPostHall = '';  // スケジュール未一致時のホール名
+let currentPosts = [];     // 直近に生成した各ポストの情報
+let slotMachines = [];      // スロット取材用の機種（報告文の【スロット】区分）
+let pachinkoMachines = [];  // パチンコ取材用の機種（報告文の【パチンコ】区分）
+
+// ===== 投稿の文字数制限 =====
+// X(旧Twitter)方式: 英数字=1、日本語・絵文字=2 で数え、上限は 280（＝日本語で約140文字）。
+// 別プラットフォームや上限変更はこの数値だけ変えればOK。
+const POST_MAX_WEIGHT = 280;
+
+// X(twitter-text)準拠の文字数カウント（日本語・絵文字は2、英数字記号は1）
+function postWeight(str) {
+  const s = (str || '').replace(/[\uFE00-\uFE0F\u200D]/g, ''); // 異体字セレクタ/ZWJを除去（絵文字1つ=2として数える）
+  let w = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0);
+    const light = cp <= 0x10FF
+      || (cp >= 0x2000 && cp <= 0x200D)
+      || (cp >= 0x2010 && cp <= 0x201F)
+      || (cp >= 0x2032 && cp <= 0x2037);
+    w += light ? 1 : 2;
+  }
+  return w;
+}
+
+// HTMLエスケープ（ポスト本文をinnerHTMLに載せるため）
+function escapeHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 機種リストを、投稿全体が上限内に収まる範囲でできるだけ多く採用（最大5機種）。
+// 入らない機種はスキップして次の機種を試す（＝枠に収まる機種を最大数詰める）。
+// 採用した機種どうしの順番は元の並びのまま維持する。
+function fitMachines(header, footer, machineList) {
+  const all = (machineList || []).slice(0, 5);
+  const kept = [];
+  for (const m of all) {
+    const block = `\n\n📝高稼働機種\n・${kept.concat([m]).join('\n・')}`;
+    if (postWeight(header + block + footer) <= POST_MAX_WEIGHT) {
+      kept.push(m); // 入るものだけ採用
+    }
+    // 入らない機種は飛ばして、後続（より短い機種など）を試す
+  }
+  return kept;
+}
+
 let nextId = Math.max(0, ...campaigns.map(c => c.id)) + 1;
 let excludeKeywords = JSON.parse(localStorage.getItem('excludeKeywords') || '[]');
 let otherRules = localStorage.getItem('otherRules') || '';
@@ -1291,6 +1335,8 @@ JSONのみ返してください：
   "slot_count": スロット遊技人数の実数またはnull,
   "pachinko_count": パチンコ遊技人数の実数またはnull,
   "machines": ["高稼働機種1", "機種2", ...],
+  "slot_machines": ["スロットの高稼働機種", ...],
+  "pachinko_machines": ["パチンコの高稼働機種", ...],
   "errors": [
     "エラー内容（例：スロット遊技人数1560名は桁ミスの可能性があります）"
   ],
@@ -1298,6 +1344,11 @@ JSONのみ返してください：
     "警告内容（例：当日スケジュールにないホールです）"
   ]
 }
+
+機種の振り分けルール：
+- 報告文に【スロット】【パチンコ】などの区分やスロット機/パチンコ機の別が読み取れる場合は、slot_machines と pachinko_machines に正しく振り分けてください。
+- 区分が無い・判別できない場合は、slot_machines と pachinko_machines は空配列にして、machines にまとめて入れてください。
+- machines には全機種（スロット・パチンコ合算）を入れてください。
 
 エラーチェック項目：
 - 遊技人数が異常に多い（500名超）→桁ミスの疑い
@@ -1334,10 +1385,9 @@ JSONのみ返してください：
 
     // スケジュールから取材情報取得
     // 重要: AIが返す matched_schedule_id だけに依存すると、AIがID番号を取り違えて
-    // 別の取材（campaign）を選んでしまう場合がある。そのため、まずホール名・企画名を
-    // コード側で照合して正しいスケジュール行を確定し、AIのIDは最後の保険として使う。
+    // 別の取材（campaign）を選んでしまう場合がある。まずホール名をコード側で照合し、
+    // 該当ホールのスケジュール行を確定する（同一ホールに複数取材があれば全件を対象にする）。
     const reportHallNorm = normalizeHall(data.hall);
-    const reportCampNorm = data.campaign ? normalizeName(data.campaign) : '';
 
     // ホール名で候補を抽出（完全一致 → 部分一致）
     let hallMatches = [];
@@ -1351,37 +1401,28 @@ JSONのみ返してください：
       }
     }
 
-    let scheduleItem = null;
-    if (hallMatches.length === 1) {
-      scheduleItem = hallMatches[0];
-    } else if (hallMatches.length > 1) {
-      // 同一ホールに複数の取材がある場合は企画名で絞り込む
-      if (reportCampNorm) {
-        scheduleItem = hallMatches.find(s => {
-          const sc = normalizeName(s.campaign);
-          return sc === reportCampNorm || sc.includes(reportCampNorm) || reportCampNorm.includes(sc);
-        });
-      }
-      // 決まらなければ候補内でAIのIDを尊重、それでも無ければ先頭
-      if (!scheduleItem && data.matched_schedule_id) {
-        scheduleItem = hallMatches.find(s => s.id === data.matched_schedule_id);
-      }
-      if (!scheduleItem) scheduleItem = hallMatches[0];
+    // 生成対象を決定（同一ホール複数取材 → 全件分ポストを出す）
+    let targets = [];
+    if (hallMatches.length > 0) {
+      targets = hallMatches;
+    } else if (data.matched_schedule_id) {
+      const byId = todaySchedule.find(s => s.id === data.matched_schedule_id);
+      if (byId) targets = [byId];
     }
+    if (targets.length === 0) targets = [null]; // スケジュール未一致（ホール名のみ）
 
-    // ホール名で全く見つからない場合のみ、AIのIDにフォールバック
-    if (!scheduleItem && data.matched_schedule_id) {
-      scheduleItem = todaySchedule.find(s => s.id === data.matched_schedule_id);
-    }
+    currentTargets = targets;
+    currentPostHall = data.hall;
+    currentHallId = targets[0] ? targets[0].id : null;
 
-    currentHallId = scheduleItem ? scheduleItem.id : null;
-
-    const campaign = scheduleItem
-      ? campaigns.find(c => c.id === scheduleItem.campaignId)
-      : null;
-
-    // 機種セット
+    // 機種セット（全体＋スロット/パチンコ別）
     machines = (data.machines || []).slice(0, 5);
+    slotMachines = (data.slot_machines || []).slice(0, 5);
+    pachinkoMachines = (data.pachinko_machines || []).slice(0, 5);
+    // machinesが空でも、slot/pachinkoに振り分けがあれば合算して手動編集欄に反映
+    if (!machines.length && (slotMachines.length || pachinkoMachines.length)) {
+      machines = [...slotMachines, ...pachinkoMachines].slice(0, 5);
+    }
     renderMachineTags();
 
     // 人数セット
@@ -1389,8 +1430,12 @@ JSONのみ返してください：
     if (data.pachinko_count) document.getElementById('editPachinko').value = data.pachinko_count;
     recalcCount();
 
-    // ポスト生成
-    generatePostText(data.hall, campaign, scheduleItem, data.slot_count, data.pachinko_count);
+    // ポスト生成（対象ごとに1件ずつ）
+    const posts = targets.map(si => {
+      const camp = si ? campaigns.find(c => c.id === si.campaignId) : null;
+      return composePost(si ? si.hall : data.hall, camp, si, data.slot_count, data.pachinko_count);
+    });
+    renderPosts(posts);
 
   } catch(e) {
     alert('解析エラー: ' + e.message);
@@ -1399,7 +1444,8 @@ JSONのみ返してください：
   }
 }
 
-function generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActual) {
+// 1件分のポスト文を組み立てて返す（DOMは触らない）。機種は投稿全体が上限に収まる分だけ採用。
+function composePost(hall, campaign, scheduleItem, slotActual, pachinkoActual) {
   const today = new Date();
   const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
   const timeType = getTimeType();
@@ -1408,7 +1454,6 @@ function generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActu
 
   const slotPublic = convertCount(slotActual);
   const pachinkoPublic = convertCount(pachinkoActual);
-  const machinesText = getMachinesText();
 
   const genre = campaign ? campaign.genre : 'slot';
   const displayName = campaign ? campaign.display : (scheduleItem ? scheduleItem.campaign : '');
@@ -1429,27 +1474,97 @@ function generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActu
     counterLine = parts.join('\n');
   }
 
-  let post = `${dateStr} ${displayName}\n${hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
-  if (machinesText) post += `\n\n📝高稼働機種\n・${machinesText}`;
+  const header = `${dateStr} ${displayName}\n${hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
+  const footer = isNight
+    ? `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`
+    : `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
 
-  if (isNight) {
-    post += `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`;
+  // 機種は取材のジャンルに合わせて選ぶ（スロット取材→スロット機種／パチンコ取材→パチンコ機種）。
+  // 振り分けデータが無い場合は全機種(machines)を使う。
+  let genreMachines;
+  if (genre === 'slot') {
+    genreMachines = slotMachines.length ? slotMachines : machines;
+  } else if (genre === 'pachinko') {
+    genreMachines = pachinkoMachines.length ? pachinkoMachines : machines;
   } else {
-    post += `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
+    genreMachines = machines.length ? machines : [...slotMachines, ...pachinkoMachines];
   }
 
-  document.getElementById('resultBox').textContent = post;
+  // 機種は投稿全体が上限に収まる範囲でのみ採用
+  const allMachines = genreMachines.slice(0, 5);
+  const kept = fitMachines(header, footer, allMachines);
+  const machineBlock = kept.length ? `\n\n📝高稼働機種\n・${kept.join('\n・')}` : '';
+  const post = header + machineBlock + footer;
+  const weight = postWeight(post);
+
+  return {
+    post, weight,
+    over: weight > POST_MAX_WEIGHT,
+    dropped: allMachines.length - kept.length,
+    displayName, hall,
+    id: scheduleItem ? scheduleItem.id : null
+  };
+}
+
+// 複数ポストをまとめて描画（同一ホール複数取材に対応）
+function renderPosts(list) {
+  currentPosts = list;
+  const cont = document.getElementById('postsContainer');
+  const multi = list.length > 1;
+
+  cont.innerHTML = list.map((p, idx) => {
+    const s = p.id ? todaySchedule.find(x => x.id === p.id) : null;
+    const posted = s && s.posted;
+    const heading = multi
+      ? `<div style="font-size:12px;font-weight:700;color:#e94560;margin-bottom:6px">${idx+1}件目：${escapeHtml(p.displayName || p.hall)}</div>`
+      : '';
+    const countClass = p.over ? 'char-count over' : 'char-count';
+    const dropNote = p.dropped ? `（機種${p.dropped}件は文字数調整で省略）` : '';
+    const overNote = p.over ? ' ⚠️上限オーバー' : '';
+    const doneBtn = p.id
+      ? `<button class="btn btn-success" id="doneBtn_${idx}" onclick="markPostDone(${p.id}, ${idx})" ${posted ? 'disabled' : ''}>${posted ? '✅ ポスト済み' : '✅ この取材をポスト済みにする'}</button>`
+      : '';
+    return `<div style="${multi ? 'border:1px solid #2a2a4a;border-radius:10px;padding:12px;margin-bottom:14px' : ''}">
+      ${heading}
+      <div class="result-box" id="postBox_${idx}">${escapeHtml(p.post)}</div>
+      <div class="${countClass}">文字数(X基準): ${p.weight} / ${POST_MAX_WEIGHT}${overNote} ${dropNote}</div>
+      <button class="btn btn-primary" onclick="copyPostText(${idx})">📋 コピーする</button>
+      <div class="success-msg" id="copySuccess_${idx}">✅ コピーしました！</div>
+      ${doneBtn}
+    </div>`;
+  }).join('');
+
   document.getElementById('resultSection').style.display = 'block';
   document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyPostText(idx) {
+  const p = currentPosts[idx];
+  if (!p) return;
+  navigator.clipboard.writeText(p.post).then(() => {
+    const el = document.getElementById('copySuccess_' + idx);
+    if (el) { el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 2000); }
+  });
+}
+
+// 個別の取材を「自分ポスト済み」にする（同一ホールの他の取材には影響しない）
+function markPostDone(id, idx) {
+  const item = todaySchedule.find(s => s.id === id);
+  if (item) { item.posted = true; item.allDone = true; save(); }
+  renderScheduleList();
+  const btn = document.getElementById('doneBtn_' + idx);
+  if (btn) { btn.disabled = true; btn.textContent = '✅ ポスト済み'; }
 }
 
 function regenPost() {
   const slotActual = parseInt(document.getElementById('editSlot').value) || null;
   const pachinkoActual = parseInt(document.getElementById('editPachinko').value) || null;
-  const scheduleItem = currentHallId ? todaySchedule.find(s => s.id === currentHallId) : null;
-  const campaign = scheduleItem ? campaigns.find(c => c.id === scheduleItem.campaignId) : null;
-  const hall = scheduleItem ? scheduleItem.hall : '';
-  generatePostText(hall, campaign, scheduleItem, slotActual, pachinkoActual);
+  const targets = currentTargets.length ? currentTargets : [null];
+  const posts = targets.map(si => {
+    const camp = si ? campaigns.find(c => c.id === si.campaignId) : null;
+    return composePost(si ? si.hall : currentPostHall, camp, si, slotActual, pachinkoActual);
+  });
+  renderPosts(posts);
 }
 
 function recalcCount() {
@@ -1468,17 +1583,17 @@ function addMachine() {
   machines.push(name);
   input.value = '';
   renderMachineTags();
+  if (currentPosts.length) regenPost();
 }
-function removeMachine(i) { machines.splice(i, 1); renderMachineTags(); }
+function removeMachine(i) { machines.splice(i, 1); renderMachineTags(); if (currentPosts.length) regenPost(); }
 function renderMachineTags() {
   const container = document.getElementById('machineTagsContainer');
   container.innerHTML = machines.map((m, i) =>
     `<span class="machine-tag">${m}<button onclick="removeMachine(${i})">×</button></span>`
   ).join('');
-  const len = machineBlockLen(machines);
   const el = document.getElementById('machineCharCount');
-  el.textContent = `${len} / 40文字`;
-  el.className = 'char-count' + (len > 40 ? ' over' : '');
+  el.textContent = `${machines.length} / 5機種（文字数に応じて自動調整）`;
+  el.className = 'char-count';
 }
 function getMachinesText() {
   if (!machines.length) return null;
@@ -1498,21 +1613,6 @@ function machineBlockLen(list) {
 }
 
 // ========== コピー・完了 ==========
-function copyPost() {
-  navigator.clipboard.writeText(document.getElementById('resultBox').textContent).then(() => {
-    const el = document.getElementById('copySuccess');
-    el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', 2000);
-  });
-}
-
-function markAsDone() {
-  if (!currentHallId) return;
-  const item = todaySchedule.find(s => s.id === currentHallId);
-  if (item) { item.posted = true; item.allDone = true; save(); }
-  renderScheduleList();
-  clearPostTab();
-}
 
 // 報告入力欄・生成ポスト・エラー・編集内容をすべてクリア
 function clearPostTab() {
@@ -1520,7 +1620,7 @@ function clearPostTab() {
   document.getElementById('lineInput').value = '';
   // 生成ポスト・エラー・警告セクションを非表示＆中身クリア
   document.getElementById('resultSection').style.display = 'none';
-  document.getElementById('resultBox').textContent = '';
+  document.getElementById('postsContainer').innerHTML = '';
   const errEl = document.getElementById('errorSection');
   errEl.style.display = 'none'; errEl.innerHTML = '';
   const warnEl = document.getElementById('warningSection');
@@ -1529,14 +1629,14 @@ function clearPostTab() {
   document.getElementById('editSlot').value = '';
   document.getElementById('editPachinko').value = '';
   machines = [];
+  slotMachines = [];
+  pachinkoMachines = [];
   renderMachineTags();
   recalcCount();
-  // ポスト済みボタンを次回用に元に戻す
-  const btn = document.getElementById('markDoneBtn');
-  btn.textContent = '✅ ポスト済みにする';
-  btn.disabled = false;
-  // 選択中ホールを解除
   currentHallId = null;
+  currentTargets = [];
+  currentPosts = [];
+  currentPostHall = '';
 }
 
 // ========== 進捗 ==========
@@ -1855,7 +1955,7 @@ function renderNagaseList() {
     const machineList = (entry.machines || []).map((m, i) =>
       `<span class="machine-tag">${m}<button onclick="nagaseRemoveMachine('${entry.id}',${i})">×</button></span>`
     ).join('');
-    const machLen = machineBlockLen(entry.machines || []);
+    const machCount = (entry.machines || []).length;
 
     return `
     <div class="card" id="nagase-card-${entry.id}" style="${entry.posted ? 'opacity:0.5' : ''}">
@@ -1880,7 +1980,7 @@ function renderNagaseList() {
       <div class="info-row"><span>パチンコ公表</span><span class="highlight" id="nagase-pachinko-pub-${entry.id}">${pachPub ? pachPub+'名' : '—'}</span></div>
       <hr class="divider">
 
-      <label>高稼働機種（最大5機種・合計40文字）</label>
+      <label>高稼働機種（最大5機種／投稿全体の文字数に収まる分だけ自動採用）</label>
       <div style="display:flex;gap:8px;margin-bottom:6px">
         <input type="text" id="nagase-machine-input-${entry.id}" placeholder="機種名を入力してEnter"
           onkeydown="if(event.key==='Enter'){event.preventDefault();nagaseAddMachine('${entry.id}')}"
@@ -1888,12 +1988,13 @@ function renderNagaseList() {
         <button class="btn btn-secondary btn-small" onclick="nagaseAddMachine('${entry.id}')">追加</button>
       </div>
       <div id="nagase-machine-tags-${entry.id}" style="margin-bottom:6px;min-height:28px">${machineList}</div>
-      <div class="char-count ${machLen > 40 ? 'over' : ''}" id="nagase-machine-count-${entry.id}">${machLen} / 40文字</div>
+      <div class="char-count" id="nagase-machine-count-${entry.id}">${machCount} / 5機種（文字数に応じて自動調整）</div>
 
       <button class="btn btn-primary" onclick="nagaseGenPost('${entry.id}')">🤖 ポスト文を生成</button>
 
       <div id="nagase-result-${entry.id}" style="display:none;margin-top:10px">
         <div class="result-box" id="nagase-result-box-${entry.id}"></div>
+        <div class="char-count" id="nagase-post-count-${entry.id}"></div>
         <button class="btn btn-primary" onclick="nagaseCopy('${entry.id}')">📋 コピーする</button>
         <div class="success-msg" id="nagase-copy-success-${entry.id}">✅ コピーしました！</div>
         <button class="btn btn-success" onclick="nagaseMarkDone('${entry.id}')">✅ ポスト済みにする</button>
@@ -1941,9 +2042,8 @@ function nagaseUpdateMachineTags(id, machines) {
   container.innerHTML = machines.map((m, i) =>
     `<span class="machine-tag">${m}<button onclick="nagaseRemoveMachine('${id}',${i})">×</button></span>`
   ).join('');
-  const len = machineBlockLen(machines);
   const el = document.getElementById(`nagase-machine-count-${id}`);
-  if (el) { el.textContent = `${len} / 40文字`; el.className = 'char-count' + (len > 40 ? ' over' : ''); }
+  if (el) { el.textContent = `${machines.length} / 5機種（文字数に応じて自動調整）`; el.className = 'char-count'; }
 }
 
 function nagaseGetMachinesText(machines) {
@@ -1969,7 +2069,6 @@ function nagaseGenPost(id) {
   const isNight = timeType === 'night';
   const slotPub = convertCount(entry.slotCount);
   const pachPub = convertCount(entry.pachinkoCount);
-  const machinesText = nagaseGetMachinesText(entry.machines || []);
 
   let counterLine = '';
   if (genre === 'slot' || (!entry.pachinkoCount && entry.slotCount)) {
@@ -1987,15 +2086,23 @@ function nagaseGenPost(id) {
     counterLine = parts.join('\n');
   }
 
-  let post = `${dateStr} ${displayName}\n${entry.hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
-  if (machinesText) post += `\n\n📝高稼働機種\n・${machinesText}`;
-  if (isNight) {
-    post += `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`;
-  } else {
-    post += `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
-  }
+  const header = `${dateStr} ${displayName}\n${entry.hall}\n\n現場の状況をリポートします📸\n${counterLine}`;
+  const footer = isNight
+    ? `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`
+    : `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
+  const allMachines = (entry.machines || []).slice(0, 5);
+  const kept = fitMachines(header, footer, allMachines);
+  const machineBlock = kept.length ? `\n\n📝高稼働機種\n・${kept.join('\n・')}` : '';
+  const post = header + machineBlock + footer;
+  const weight = postWeight(post);
+  const dropped = allMachines.length - kept.length;
 
   document.getElementById(`nagase-result-box-${id}`).textContent = post;
+  const countEl = document.getElementById(`nagase-post-count-${id}`);
+  if (countEl) {
+    countEl.textContent = `文字数(X基準): ${weight} / ${POST_MAX_WEIGHT}${weight > POST_MAX_WEIGHT ? ' ⚠️上限オーバー' : ''}${dropped ? `（機種${dropped}件は文字数調整で省略）` : ''}`;
+    countEl.className = 'char-count' + (weight > POST_MAX_WEIGHT ? ' over' : '');
+  }
   document.getElementById(`nagase-result-${id}`).style.display = 'block';
 }
 
