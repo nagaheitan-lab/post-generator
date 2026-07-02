@@ -747,6 +747,7 @@ let currentPostHall = '';  // スケジュール未一致時のホール名
 let currentPosts = [];     // 直近に生成した各ポストの情報
 let slotMachines = [];      // スロット取材用の機種（報告文の【スロット】区分）
 let pachinkoMachines = [];  // パチンコ取材用の機種（報告文の【パチンコ】区分）
+let machinesEdited = false; // 機種を手動編集したか（true の間は両取材でも合算リストを尊重）
 
 // ===== 投稿の文字数制限 =====
 // X(旧Twitter)方式: 英数字=1、日本語・絵文字=2 で数え、上限は 280（＝日本語で約140文字）。
@@ -787,6 +788,41 @@ function fitMachines(header, footer, machineList) {
     // 入らない機種は飛ばして、後続（より短い機種など）を試す
   }
   return kept;
+}
+
+// S/P両取材用：スロット→パチンコを交互に優先採用し、投稿全体が上限に収まる分だけ残す。
+// 採用の優先順位は S0, P0, S1, P1, … （スロット始まり）。
+// 表示順は「スロットをまとめて先 → パチンコをまとめて後」（各グループ内は元の並び順）。
+function fitMachinesBoth(header, footer, slotList, pachinkoList) {
+  const s = (slotList || []).slice(0, 5);
+  const p = (pachinkoList || []).slice(0, 5);
+
+  // 優先順位リスト（交互・スロット始まり）
+  const priority = [];
+  const maxLen = Math.max(s.length, p.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < s.length) priority.push({ name: s[i], type: 'slot' });
+    if (i < p.length) priority.push({ name: p[i], type: 'pachinko' });
+  }
+
+  // 優先順位順に、投稿全体が上限に収まるものだけ採用（最大5機種）
+  const kept = [];
+  for (const m of priority) {
+    if (kept.length >= 5) break;
+    const names = kept.concat([m]).map(x => x.name);
+    const block = `\n\n📝高稼働機種\n・${names.join('\n・')}`;
+    if (postWeight(header + block + footer) <= POST_MAX_WEIGHT) {
+      kept.push(m); // 入るものだけ採用（入らないものは飛ばして次を試す）
+    }
+  }
+
+  // 表示順に並べ替え：スロットまとめ → パチンコまとめ（各々は元の並び順）
+  const keptSlots = kept.filter(m => m.type === 'slot').map(m => m.name);
+  const keptPachinko = kept.filter(m => m.type === 'pachinko').map(m => m.name);
+  return {
+    machines: [...keptSlots, ...keptPachinko],
+    candidateCount: Math.min(priority.length, 5)
+  };
 }
 
 let nextId = Math.max(0, ...campaigns.map(c => c.id)) + 1;
@@ -1419,6 +1455,7 @@ JSONのみ返してください：
     machines = (data.machines || []).slice(0, 5);
     slotMachines = (data.slot_machines || []).slice(0, 5);
     pachinkoMachines = (data.pachinko_machines || []).slice(0, 5);
+    machinesEdited = false; // AI解析の新しい結果なので手動編集フラグをリセット
     // machinesが空でも、slot/pachinkoに振り分けがあれば合算して手動編集欄に反映
     if (!machines.length && (slotMachines.length || pachinkoMachines.length)) {
       machines = [...slotMachines, ...pachinkoMachines].slice(0, 5);
@@ -1479,20 +1516,28 @@ function composePost(hall, campaign, scheduleItem, slotActual, pachinkoActual) {
     ? `\n\n店内盛り上がっていたようですね⤴️⤴️\n\nPR`
     : `\n\n店内盛り上がってるようですね⤴️⤴️\nこの後も、まだまだチャンスがありそう👍\n\nPR`;
 
-  // 機種は取材のジャンルに合わせて選ぶ（スロット取材→スロット機種／パチンコ取材→パチンコ機種）。
-  // 振り分けデータが無い場合は全機種(machines)を使う。
-  let genreMachines;
-  if (genre === 'slot') {
-    genreMachines = slotMachines.length ? slotMachines : machines;
-  } else if (genre === 'pachinko') {
-    genreMachines = pachinkoMachines.length ? pachinkoMachines : machines;
+  // 機種選定。
+  // ・S/P両取材 & スロット/パチンコの振り分けがある場合：S→P交互で優先採用し、表示はSまとめ→Pまとめ。
+  // ・それ以外（スロット取材／パチンコ取材、または振り分けが無い場合）：ジャンルに合う機種を上から詰める。
+  let kept, candidateCount;
+  if (genre === 'both' && !machinesEdited && (slotMachines.length || pachinkoMachines.length)) {
+    const r = fitMachinesBoth(header, footer, slotMachines, pachinkoMachines);
+    kept = r.machines;
+    candidateCount = r.candidateCount;
   } else {
-    genreMachines = machines.length ? machines : [...slotMachines, ...pachinkoMachines];
+    let genreMachines;
+    if (genre === 'slot') {
+      genreMachines = slotMachines.length ? slotMachines : machines;
+    } else if (genre === 'pachinko') {
+      genreMachines = pachinkoMachines.length ? pachinkoMachines : machines;
+    } else {
+      genreMachines = machines.length ? machines : [...slotMachines, ...pachinkoMachines];
+    }
+    const allMachines = genreMachines.slice(0, 5);
+    kept = fitMachines(header, footer, allMachines);
+    candidateCount = allMachines.length;
   }
 
-  // 機種は投稿全体が上限に収まる範囲でのみ採用
-  const allMachines = genreMachines.slice(0, 5);
-  const kept = fitMachines(header, footer, allMachines);
   const machineBlock = kept.length ? `\n\n📝高稼働機種\n・${kept.join('\n・')}` : '';
   const post = header + machineBlock + footer;
   const weight = postWeight(post);
@@ -1500,7 +1545,7 @@ function composePost(hall, campaign, scheduleItem, slotActual, pachinkoActual) {
   return {
     post, weight,
     over: weight > POST_MAX_WEIGHT,
-    dropped: allMachines.length - kept.length,
+    dropped: candidateCount - kept.length,
     displayName, hall,
     id: scheduleItem ? scheduleItem.id : null
   };
@@ -1590,11 +1635,12 @@ function addMachine() {
   const name = input.value.trim();
   if (!name || machines.length >= 5) return;
   machines.push(name);
+  machinesEdited = true;
   input.value = '';
   renderMachineTags();
   if (currentPosts.length) regenPost();
 }
-function removeMachine(i) { machines.splice(i, 1); renderMachineTags(); if (currentPosts.length) regenPost(); }
+function removeMachine(i) { machines.splice(i, 1); machinesEdited = true; renderMachineTags(); if (currentPosts.length) regenPost(); }
 function renderMachineTags() {
   const container = document.getElementById('machineTagsContainer');
   container.innerHTML = machines.map((m, i) =>
@@ -1640,6 +1686,7 @@ function clearPostTab() {
   machines = [];
   slotMachines = [];
   pachinkoMachines = [];
+  machinesEdited = false;
   renderMachineTags();
   recalcCount();
   currentHallId = null;
