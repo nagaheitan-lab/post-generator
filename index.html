@@ -1554,6 +1554,15 @@ function markPostDone(id, idx) {
   renderScheduleList();
   const btn = document.getElementById('doneBtn_' + idx);
   if (btn) { btn.disabled = true; btn.textContent = '✅ ポスト済み'; }
+
+  // 生成した取材ポストをすべてポスト済みにしたら、報告入力・生成ポストをクリア
+  // （単独取材なら1件で即クリア。複数取材なら最後の1件を押したときにクリア）
+  const doneable = currentPosts.filter(p => p.id);
+  const allPosted = doneable.length > 0 && doneable.every(p => {
+    const s = todaySchedule.find(x => x.id === p.id);
+    return s && s.posted;
+  });
+  if (allPosted) clearPostTab();
 }
 
 function regenPost() {
